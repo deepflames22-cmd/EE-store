@@ -1,16 +1,31 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import {
+  BUNDLE,
+  CATEGORIES,
   LIFESTYLE_IMG,
   MARQUEE_ITEMS,
   PRODUCTS,
-  CATEGORIES,
   TESTIMONIALS,
   formatPrice,
   type Product,
 } from "../data/products";
-import { ArrowRight, ArrowUpRight, PlayIcon, PlusIcon } from "../components/Icons";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CheckIcon,
+  CopyIcon,
+  DiamondIcon,
+  GiftIcon,
+  GlobeIcon,
+  PlayIcon,
+  PlusIcon,
+  ShieldIcon,
+  TagIcon,
+  TimerIcon,
+  TruckIcon,
+} from "../components/Icons";
 import { LineMaskReveal, Marquee, OrbitBadge, Reveal, SectionHead, TiltFrame } from "../components/shared";
 import { useCart } from "../store/CartContext";
 import { useCountUp, useInView } from "../hooks/useInView";
@@ -28,7 +43,6 @@ function Hero() {
   return (
     <section ref={ref} className="relative pt-28 md:pt-36 pb-14 overflow-hidden">
       <div className="mx-auto max-w-[88rem] px-5 md:px-8 grid lg:grid-cols-12 gap-10 items-start">
-        {/* left: type */}
         <motion.div style={{ y: yText }} className="lg:col-span-7 relative">
           <motion.div
             initial={{ opacity: 0 }}
@@ -92,7 +106,6 @@ function Hero() {
           </Reveal>
         </motion.div>
 
-        {/* right: object on dark plate */}
         <div className="lg:col-span-5 relative">
           <Reveal delay={0.25} y={50}>
             <TiltFrame max={6} className="relative">
@@ -104,7 +117,6 @@ function Hero() {
                     draggable={false}
                     className="blend-lighten relative mx-auto w-[82%] animate-float drop-shadow-[0_30px_50px_rgba(201,162,75,0.25)]"
                   />
-                  {/* floating spec chips */}
                   <span className="absolute top-10 left-5 font-mono text-[9px] tracking-[0.2em] uppercase text-goldlight border border-brass/40 px-2.5 py-1.5 bg-ink/60">
                     40h playback
                   </span>
@@ -140,6 +152,122 @@ function Hero() {
   );
 }
 
+/* ---------- promo countdown ---------- */
+
+function FlipDigit({ value }: { value: string }) {
+  return (
+    <span className="relative inline-block overflow-hidden h-[1.2em] align-bottom">
+      <motion.span
+        key={value}
+        initial={{ y: "100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="inline-block tabular-nums"
+      >
+        {value}
+      </motion.span>
+    </span>
+  );
+}
+
+function PromoCountdown() {
+  const target = useMemo(() => Date.now() + 5 * 86400000 + 7 * 3600000 + 42 * 60000, []);
+  const [left, setLeft] = useState(target - Date.now());
+  const { pushToast } = useCart();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const t = window.setInterval(() => setLeft(Math.max(target - Date.now(), 0)), 1000);
+    return () => window.clearInterval(t);
+  }, [target]);
+
+  const days = String(Math.floor(left / 86400000)).padStart(2, "0");
+  const hours = String(Math.floor((left % 86400000) / 3600000)).padStart(2, "0");
+  const mins = String(Math.floor((left % 3600000) / 60000)).padStart(2, "0");
+  const secs = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText("GILD10");
+    } catch {
+      /* clipboard unavailable */
+    }
+    setCopied(true);
+    pushToast("Code copied — GILD10", "Paste it in the vault ledger at checkout.");
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  const cells: Array<[string, string]> = [
+    [days, "Days"],
+    [hours, "Hours"],
+    [mins, "Minutes"],
+    [secs, "Seconds"],
+  ];
+
+  return (
+    <section className="relative plate-pine text-paper overflow-hidden border-y-2 border-ink">
+      <div className="absolute -right-24 -top-24 opacity-40 pointer-events-none" aria-hidden>
+        <OrbitBadge light size={320} text="TEN PERCENT • TEN PERCENT • TEN PERCENT • " />
+      </div>
+      <div className="relative mx-auto max-w-[88rem] px-5 md:px-8 py-16 md:py-20 grid lg:grid-cols-12 gap-10 items-center">
+        <div className="lg:col-span-5">
+          <Reveal>
+            <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-brass">
+              <TimerIcon className="w-4 h-4" /> Promotion — closing soon
+            </div>
+            <h2 className="mt-5 font-display font-extrabold tracking-tight leading-[0.95] text-4xl md:text-5xl">
+              The gilded hours <span className="italic font-medium text-brass">are numbered.</span>
+            </h2>
+            <p className="mt-4 max-w-md text-paper/55 leading-relaxed">
+              Take ten percent off everything in Run 07 while the counter runs. One code,
+              every objet, no asterisks.
+            </p>
+          </Reveal>
+        </div>
+
+        <div className="lg:col-span-4">
+          <Reveal delay={0.12}>
+            <div className="grid grid-cols-4 gap-3">
+              {cells.map(([v, label], i) => (
+                <div key={label} className="relative border-2 border-brass/40 bg-ink/50 py-5 text-center">
+                  {i > 0 && <span className="absolute -left-[9px] top-1/2 -translate-y-1/2 text-brass font-display font-bold hidden lg:block">:</span>}
+                  <span className="font-display font-extrabold text-3xl md:text-4xl text-goldlight">
+                    <FlipDigit value={v[0]} />
+                    <FlipDigit value={v[1]} />
+                  </span>
+                  <span className="block mt-2 font-mono text-[9px] tracking-[0.22em] uppercase text-paper/45">{label}</span>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+
+        <div className="lg:col-span-3">
+          <Reveal delay={0.2}>
+            <div className="border-2 border-dashed border-brass/60 bg-ink/40 p-5 text-center">
+              <span className="font-mono text-[9px] tracking-[0.26em] uppercase text-paper/50">Your code</span>
+              <div className="mt-2 font-display font-extrabold text-3xl tracking-[0.14em] text-brass">GILD10</div>
+              <button
+                data-cursor
+                onClick={copyCode}
+                className={`mt-4 w-full py-3 font-mono text-[10px] tracking-[0.24em] uppercase border-2 transition-all duration-300 flex items-center justify-center gap-2.5 ${
+                  copied
+                    ? "bg-brass text-ink border-brass"
+                    : "border-brass/60 text-brass hover:bg-brass hover:text-ink"
+                }`}
+              >
+                {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
+                {copied ? "Copied" : "Copy code"}
+              </button>
+              <p className="mt-3 text-[11px] text-paper/45">Applies in the vault & at checkout.</p>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- product rail ---------- */
 
 function ProductRail() {
@@ -149,7 +277,7 @@ function ProductRail() {
   const scroll = (dir: number) => railRef.current?.scrollBy({ left: dir * 360, behavior: "smooth" });
 
   return (
-    <section className="py-24 border-t-2 border-ink bg-bone/50">
+    <section className="py-24 bg-bone/50">
       <div className="mx-auto max-w-[88rem] px-5 md:px-8">
         <SectionHead
           index="01"
@@ -224,7 +352,12 @@ function RailCard({
         <span className="absolute top-4 left-4 font-mono text-[9px] tracking-[0.24em] uppercase text-goldlight bg-ink/70 border border-brass/30 px-2 py-1">
           №{String(index + 1).padStart(2, "0")}
         </span>
-        {product.tag && (
+        {product.was && (
+          <span className="absolute top-4 right-4 bg-rust text-paper font-mono text-[9px] tracking-[0.2em] uppercase px-2 py-1 font-medium">
+            Save {formatPrice(product.was - product.price)}
+          </span>
+        )}
+        {!product.was && product.tag && (
           <span className="absolute top-4 right-4 bg-brass text-ink font-mono text-[9px] tracking-[0.2em] uppercase px-2 py-1 font-medium">
             {product.tag}
           </span>
@@ -236,7 +369,10 @@ function RailCard({
           <button data-cursor onClick={onView} className="font-display font-bold text-lg hover:text-gold transition-colors truncate">
             {product.name}
           </button>
-          <div className="text-sm text-mist tabular-nums">{formatPrice(product.price)}</div>
+          <div className="text-sm tabular-nums">
+            <span className="text-mist">{formatPrice(product.price)}</span>
+            {product.was && <span className="ml-2 text-mist/60 line-through">{formatPrice(product.was)}</span>}
+          </div>
         </div>
         <button
           data-cursor
@@ -248,6 +384,100 @@ function RailCard({
         </button>
       </div>
     </motion.div>
+  );
+}
+
+/* ---------- objet of the season ---------- */
+
+function Spotlight() {
+  const { add } = useCart();
+  const obj = PRODUCTS.find((p) => p.id === "meridian-s") ?? PRODUCTS[1];
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const yWord = useTransform(scrollYProgress, [0, 1], [reduce ? 0 : 60, reduce ? 0 : -60]);
+
+  return (
+    <section ref={ref} className="relative bg-ink text-paper overflow-hidden border-y-2 border-ink">
+      <motion.span
+        style={{ y: yWord }}
+        className="absolute top-6 left-0 font-display font-extrabold text-[18vw] leading-none text-outline-paper whitespace-nowrap select-none pointer-events-none"
+        aria-hidden
+      >
+        MERIDIAN — MERIDIAN — MERIDIAN
+      </motion.span>
+
+      <div className="relative mx-auto max-w-[88rem] px-5 md:px-8 py-24 grid lg:grid-cols-2 gap-12 items-center">
+        <Reveal y={50}>
+          <TiltFrame max={5}>
+            <div className="relative border-2 border-brass/40 plate-dark p-8 md:p-12">
+              <img
+                src={obj.img}
+                alt={obj.name}
+                className="blend-lighten relative mx-auto w-[78%] animate-float drop-shadow-[0_30px_60px_rgba(201,162,75,0.3)]"
+              />
+              <span className="absolute top-5 left-5 font-mono text-[9px] tracking-[0.24em] uppercase text-goldlight bg-ink/70 border border-brass/30 px-2.5 py-1.5">
+                Objet of the season
+              </span>
+              <span className="absolute bottom-5 right-5 font-mono text-[9px] tracking-[0.24em] uppercase text-brass">
+                № 118 — 500
+              </span>
+            </div>
+          </TiltFrame>
+        </Reveal>
+
+        <div>
+          <Reveal>
+            <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-brass">
+              <span className="w-8 h-px bg-brass" /> This week only
+            </div>
+            <h2 className="mt-5 font-display font-extrabold tracking-tight leading-[0.92] text-5xl md:text-7xl">
+              {obj.name}
+              <span className="text-brass">.</span>
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="mt-6 max-w-md text-paper/55 text-lg leading-relaxed">{obj.blurb}</p>
+          </Reveal>
+          <Reveal delay={0.18}>
+            <div className="mt-7 flex flex-wrap items-baseline gap-4">
+              <span className="font-display font-extrabold text-4xl text-goldlight tabular-nums">{formatPrice(obj.price)}</span>
+              {obj.was && <span className="text-paper/40 line-through text-xl tabular-nums">{formatPrice(obj.was)}</span>}
+              <span className="bg-rust text-paper font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1.5">
+                −{formatPrice((obj.was ?? obj.price) - obj.price)} this week
+              </span>
+            </div>
+          </Reveal>
+          <Reveal delay={0.26}>
+            <ul className="mt-7 space-y-2.5">
+              {obj.specs.map((s) => (
+                <li key={s} className="flex items-center gap-3 text-sm text-paper/70">
+                  <CheckIcon className="w-4 h-4 text-brass shrink-0" /> {s}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+          <Reveal delay={0.34}>
+            <div className="mt-9 flex flex-wrap gap-4">
+              <button
+                data-cursor
+                onClick={() => add(obj)}
+                className="btn-sheen group bg-brass text-ink px-8 py-4 font-mono text-[11px] tracking-[0.26em] uppercase hover:bg-goldlight transition-colors flex items-center gap-3"
+              >
+                <PlusIcon className="w-4 h-4" /> Reserve № 118
+              </button>
+              <Link
+                to={`/product/${obj.id}`}
+                data-cursor
+                className="group border-2 border-paper/30 px-8 py-[14px] font-mono text-[11px] tracking-[0.26em] uppercase hover:border-brass hover:text-brass transition-all duration-300 flex items-center gap-3"
+              >
+                Full details <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -299,6 +529,82 @@ function Disciplines() {
             );
           })}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- bundle ---------- */
+
+function BundlePromo() {
+  const { addMany, pushToast } = useCart();
+  const items = BUNDLE.itemIds
+    .map((id) => PRODUCTS.find((p) => p.id === id))
+    .filter((p): p is Product => Boolean(p));
+  const full = items.reduce((s, p) => s + p.price, 0);
+  const price = full - BUNDLE.save;
+
+  return (
+    <section className="pb-24">
+      <div className="mx-auto max-w-[88rem] px-5 md:px-8">
+        <Reveal y={44}>
+          <div className="relative bg-brass border-2 border-ink overflow-hidden">
+            <span className="absolute -left-8 -bottom-20 font-display font-extrabold text-[14rem] leading-none text-ink/8 select-none" aria-hidden>
+              SET
+            </span>
+            <div className="relative grid lg:grid-cols-12 gap-8 items-center px-6 md:px-12 py-12 md:py-14">
+              <div className="lg:col-span-5">
+                <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-ink/70">
+                  <GiftIcon className="w-4 h-4" /> Bundle — {BUNDLE.note}
+                </div>
+                <h2 className="mt-4 font-display font-extrabold tracking-tight leading-[0.92] text-4xl md:text-6xl text-ink">
+                  The Travel <span className="italic font-medium">Set.</span>
+                </h2>
+                <p className="mt-4 max-w-sm text-ink/70 leading-relaxed">
+                  Headphones, earbuds and the column of sound — sealed in one lacquered
+                  case, numbered as a set.
+                </p>
+                <div className="mt-6 flex flex-wrap items-baseline gap-4">
+                  <span className="font-display font-extrabold text-4xl text-ink tabular-nums">{formatPrice(price)}</span>
+                  <span className="text-ink/45 line-through text-xl tabular-nums">{formatPrice(full)}</span>
+                  <span className="bg-ink text-brass font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1.5">
+                    Save {formatPrice(BUNDLE.save)}
+                  </span>
+                </div>
+                <button
+                  data-cursor
+                  onClick={() => {
+                    addMany(items);
+                    pushToast(`${formatPrice(BUNDLE.save)} saved`, "The set travels as one serial.");
+                  }}
+                  className="btn-sheen group mt-7 bg-ink text-paper px-8 py-4 font-mono text-[11px] tracking-[0.26em] uppercase hover:bg-coal transition-colors flex items-center gap-3"
+                >
+                  <GiftIcon className="w-4 h-4 text-brass group-hover:text-paper transition-colors" />
+                  Add the whole set
+                  <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
+                </button>
+              </div>
+              <div className="lg:col-span-7">
+                <div className="flex items-center justify-center gap-0">
+                  {items.map((p, i) => (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, y: 40, rotate: i % 2 ? 6 : -6 }}
+                      whileInView={{ opacity: 1, y: 0, rotate: i % 2 ? 3 : -3 }}
+                      viewport={{ once: true, margin: "-10%" }}
+                      transition={{ duration: 0.7, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                      className={`plate-dark border-2 border-ink p-5 w-36 md:w-48 hover-lift ${i === 1 ? "-mx-4 md:-mx-6 z-10 scale-105" : ""}`}
+                    >
+                      <img src={p.img} alt={p.name} className="blend-lighten w-full h-28 md:h-36 object-contain" />
+                      <div className="mt-3 text-center font-mono text-[9px] tracking-[0.2em] uppercase text-goldlight">{p.name}</div>
+                      <div className="text-center text-paper/50 text-xs tabular-nums mt-1">{formatPrice(p.price)}</div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -389,6 +695,49 @@ function Craft() {
   );
 }
 
+/* ---------- house services ledger ---------- */
+
+function ServicesLedger() {
+  const rows = [
+    { icon: <TruckIcon className="w-6 h-6" />, title: "White-glove delivery", note: "Insured, hand-carried, gloves on — complimentary above $500." },
+    { icon: <ShieldIcon className="w-6 h-6" />, title: "Repair for life", note: "Every serial ever issued is serviced at the atelier, forever." },
+    { icon: <TagIcon className="w-6 h-6" />, title: "30-day returns", note: "Change your mind; the serial is retired, never resold as new." },
+    { icon: <GlobeIcon className="w-6 h-6" />, title: "Gold exchange", note: "Trade a retired objet toward the next run, at book value." },
+  ];
+
+  return (
+    <section className="py-24 border-t-2 border-ink">
+      <div className="mx-auto max-w-[88rem] px-5 md:px-8">
+        <SectionHead
+          index="04"
+          kicker="House Services"
+          title={
+            <>
+              What the house <span className="italic font-medium text-gold">guarantees.</span>
+            </>
+          }
+        />
+        <div className="mt-12 border-t-2 border-ink">
+          {rows.map((r, i) => (
+            <Reveal key={r.title} delay={i * 0.05} y={20}>
+              <div className="group relative grid grid-cols-[auto_auto_1fr] md:grid-cols-[80px_60px_1fr_auto] items-center gap-5 md:gap-8 border-b-2 border-ink py-6 px-2 overflow-hidden">
+                <span className="absolute inset-0 bg-brass/15 translate-x-[-101%] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0" />
+                <span className="relative font-mono text-sm text-gold">0{i + 1}</span>
+                <span className="relative text-gold transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">{r.icon}</span>
+                <span className="relative flex flex-col md:flex-row md:items-baseline md:gap-6">
+                  <span className="font-display font-bold text-xl md:text-2xl">{r.title}</span>
+                  <span className="text-sm text-mist">{r.note}</span>
+                </span>
+                <DiamondIcon className="relative hidden md:block w-2.5 h-2.5 text-brass opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- stats band ---------- */
 
 const STATS = [
@@ -426,9 +775,7 @@ function StatCell({
       initial={{ opacity: 0, y: 26 }}
       animate={active ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.7, delay }}
-      className={`py-12 px-6 text-center lg:text-left border-paper/15 ${last ? "" : "lg:border-r"} ${
-        STATS.indexOf(STATS.find((x) => x.label === label)!) % 2 === 0 ? "border-r" : ""
-      } lg:border-b-0 border-b`}
+      className={`py-12 px-6 text-center lg:text-left border-paper/15 ${last ? "" : "lg:border-r"} border-b lg:border-b-0`}
     >
       <div className="font-display font-extrabold text-4xl md:text-5xl text-goldlight tabular-nums">
         {decimals ? v.toFixed(decimals) : Math.round(v)}
@@ -458,7 +805,7 @@ function Voices() {
       <div className="mx-auto max-w-[88rem] px-5 md:px-8 grid lg:grid-cols-12 gap-10 items-center">
         <div className="lg:col-span-4">
           <SectionHead
-            index="04"
+            index="05"
             kicker="Voices"
             title={
               <>
@@ -576,7 +923,9 @@ function PrivateList() {
             <div>
               {state === "done" ? (
                 <div className="border-2 border-ink bg-paper px-8 py-6">
-                  <span className="font-display font-bold text-xl text-ink">Welcome to the list.</span>
+                  <span className="font-display font-bold text-xl text-ink flex items-center gap-3">
+                    <CheckIcon className="w-5 h-5 text-gold" /> Welcome to the list.
+                  </span>
                   <p className="mt-1.5 text-sm text-mist">Your first letter ships with the next run — at golden hour.</p>
                 </div>
               ) : (
@@ -628,9 +977,13 @@ export default function Home() {
     >
       <Hero />
       <Marquee items={MARQUEE_ITEMS} />
+      <PromoCountdown />
       <ProductRail />
+      <Spotlight />
       <Disciplines />
+      <BundlePromo />
       <Craft />
+      <ServicesLedger />
       <StatsBand />
       <Voices />
       <PrivateList />

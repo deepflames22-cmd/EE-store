@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { Product } from "../data/products";
+import { PROMOS, promoDiscount, type Product, type Promo } from "../data/products";
 
 export type CartLine = { product: Product; qty: number };
 export type ToastItem = { id: number; title: string; body?: string };
@@ -8,19 +8,23 @@ type CartCtx = {
   lines: CartLine[];
   count: number;
   subtotal: number;
-  open: boolean;
-  setOpen: (v: boolean) => void;
+  promo: Promo | null;
+  discount: number;
   add: (p: Product, qty?: number) => void;
+  addMany: (products: Product[]) => void;
   remove: (id: string) => void;
   setQty: (id: string, qty: number) => void;
   clear: () => void;
+  applyPromo: (code: string) => { ok: boolean; message: string };
+  removePromo: () => void;
   toasts: ToastItem[];
   pushToast: (title: string, body?: string) => void;
 };
 
 const Ctx = createContext<CartCtx | null>(null);
 
-const STORAGE_KEY = "aurion-cart-v2";
+const STORAGE_KEY = "aurion-cart-v3";
+const PROMO_KEY = "aurion-promo-v3";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>(() => {
@@ -31,23 +35,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [];
     }
   });
-  const [open, setOpen] = useState(false);
+  const [promo, setPromo] = useState<Promo | null>(() => {
+    try {
+      const code = localStorage.getItem(PROMO_KEY);
+      return PROMOS.find((p) => p.code === code) ?? null;
+    } catch {
+      return null;
+    }
+  });
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
+      if (promo) localStorage.setItem(PROMO_KEY, promo.code);
+      else localStorage.removeItem(PROMO_KEY);
     } catch {
       /* storage unavailable */
     }
-  }, [lines]);
+  }, [lines, promo]);
 
   const pushToast = useCallback((title: string, body?: string) => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t.slice(-2), { id, title, body }]);
     window.setTimeout(() => {
       setToasts((t) => t.filter((x) => x.id !== id));
-    }, 2800);
+    }, 3000);
   }, []);
 
   const add = useCallback(
@@ -59,6 +72,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return [...ls, { product: p, qty }];
       });
       pushToast("Added to your vault", `${p.name} — reserved in Run 07`);
+    },
+    [pushToast]
+  );
+
+  const addMany = useCallback(
+    (products: Product[]) => {
+      setLines((ls) => {
+        let next = [...ls];
+        for (const p of products) {
+          const found = next.find((l) => l.product.id === p.id);
+          next = found
+            ? next.map((l) => (l.product.id === p.id ? { ...l, qty: l.qty + 1 } : l))
+            : [...next, { product: p, qty: 1 }];
+        }
+        return next;
+      });
+      pushToast("The set is yours", "All three objets reserved — one seal, one box.");
     },
     [pushToast]
   );
@@ -75,13 +105,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const clear = useCallback(() => setLines([]), []);
+  const clear = useCallback(() => {
+    setLines([]);
+    setPromo(null);
+  }, []);
+
+  const applyPromo = useCallback(
+    (code: string): { ok: boolean; message: string } => {
+      const normalized = code.trim().toUpperCase();
+      const found = PROMOS.find((p) => p.code === normalized);
+      if (!found) return { ok: false, message: "That code is not in the ledger." };
+      setPromo(found);
+      return { ok: true, message: found.label };
+    },
+    []
+  );
+
+  const removePromo = useCallback(() => setPromo(null), []);
 
   const value = useMemo<CartCtx>(() => {
     const count = lines.reduce((s, l) => s + l.qty, 0);
     const subtotal = lines.reduce((s, l) => s + l.product.price * l.qty, 0);
-    return { lines, count, subtotal, open, setOpen, add, remove, setQty, clear, toasts, pushToast };
-  }, [lines, open, add, remove, setQty, clear, toasts, pushToast]);
+    const discount = promoDiscount(subtotal, promo);
+    return {
+      lines,
+      count,
+      subtotal,
+      promo,
+      discount,
+      add,
+      addMany,
+      remove,
+      setQty,
+      clear,
+      applyPromo,
+      removePromo,
+      toasts,
+      pushToast,
+    };
+  }, [lines, promo, add, addMany, remove, setQty, clear, applyPromo, removePromo, toasts, pushToast]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

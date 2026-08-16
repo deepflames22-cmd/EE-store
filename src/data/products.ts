@@ -3,11 +3,44 @@ export type Product = {
   name: string;
   category: Category;
   price: number;
+  was?: number;
   tag?: string;
   blurb: string;
   specs: string[];
   img: string;
 };
+
+export type Promo = {
+  code: string;
+  label: string;
+  type: "pct" | "flat";
+  value: number;
+  min?: number;
+};
+
+export const PROMOS: Promo[] = [
+  { code: "GILD10", label: "10% off the entire run", type: "pct", value: 10 },
+  { code: "RUN07", label: "$75 off orders over $600", type: "flat", value: 75, min: 600 },
+  { code: "MAISON", label: "$25 house welcome", type: "flat", value: 25 },
+];
+
+export const BUNDLE = {
+  id: "travel-set",
+  name: "The Travel Set",
+  itemIds: ["aurion-one", "halo-buds", "obelisk"],
+  save: 140,
+  note: "Only 120 sets numbered & sealed",
+};
+
+export const SHIPPING_FLAT = 25;
+export const FREE_SHIP_AT = 500;
+
+export function promoDiscount(subtotal: number, promo: Promo | null): number {
+  if (!promo) return 0;
+  if (promo.type === "pct") return Math.round(subtotal * (promo.value / 100));
+  if (promo.min && subtotal < promo.min) return 0;
+  return Math.min(promo.value, subtotal);
+}
 
 export type Category = "Audio" | "Wearables" | "Imaging" | "Desk";
 
@@ -37,6 +70,7 @@ export const PRODUCTS: Product[] = [
     name: "Aurion One",
     category: "Audio",
     price: 549,
+    was: 649,
     tag: "Signature",
     blurb: "Over-ear headphones machined from a single billet, dressed in champagne gold.",
     specs: ["40h playback", "24-bit / 192kHz", "Adaptive ANC"],
@@ -47,6 +81,7 @@ export const PRODUCTS: Product[] = [
     name: "Meridian S",
     category: "Wearables",
     price: 799,
+    was: 899,
     tag: "New",
     blurb: "A timepiece that happens to be a computer. Sapphire glass, gold case, ten-day reserve.",
     specs: ["Sapphire crystal", "10-day battery", "5ATM sealed"],
@@ -95,6 +130,7 @@ export const PRODUCTS: Product[] = [
     name: "Falcon X",
     category: "Imaging",
     price: 1499,
+    was: 1699,
     tag: "New",
     blurb: "A folding drone with a stabilised gold gimbal. Forty minutes aloft, one palm to land.",
     specs: ["40-min flight", "8K gimbal", "249g airframe"],

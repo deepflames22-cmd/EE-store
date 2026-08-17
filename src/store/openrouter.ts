@@ -6,6 +6,8 @@ const MODEL_KEY = "aurion-openrouter-model";
 const CHAT_KEY = "aurion-chat-v1";
 
 export const OPENROUTER_MODELS = [
+  { id: "openrouter/auto", label: "OpenRouter Auto — picks the best model per query" },
+  { id: "openrouter/auto-beta", label: "OpenRouter Auto Beta — experimental routing" },
   { id: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B — free" },
   { id: "deepseek/deepseek-chat-v3-0324:free", label: "DeepSeek V3 — free" },
   { id: "mistralai/mistral-small-3.2-24b-instruct:free", label: "Mistral Small 3.2 — free" },
@@ -13,6 +15,8 @@ export const OPENROUTER_MODELS = [
   { id: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku" },
   { id: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash" },
 ];
+
+export const DEFAULT_MODEL = "openrouter/auto";
 
 export function getApiKey(): string {
   try {
@@ -33,9 +37,9 @@ export function saveApiKey(key: string) {
 
 export function getModel(): string {
   try {
-    return localStorage.getItem(MODEL_KEY) ?? OPENROUTER_MODELS[0].id;
+    return localStorage.getItem(MODEL_KEY) ?? DEFAULT_MODEL;
   } catch {
-    return OPENROUTER_MODELS[0].id;
+    return DEFAULT_MODEL;
   }
 }
 

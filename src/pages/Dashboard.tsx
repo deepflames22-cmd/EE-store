@@ -34,6 +34,7 @@ import {
   testKey,
 } from "../store/openrouter";
 import { useCart } from "../store/CartContext";
+import { BrandingTab, CatalogTab, HomepageTab, ShippingTab } from "./DashboardTabs";
 import {
   ArrowUpRight,
   BellIcon,
@@ -53,6 +54,7 @@ import {
   SearchIcon,
   SettingsIcon,
   TagIcon,
+  TruckIcon,
   UserIcon,
 } from "../components/Icons";
 
@@ -193,14 +195,28 @@ function OpenRouterCard() {
   );
 }
 
-type Tab = "overview" | "orders" | "products" | "customers" | "promos" | "settings";
+type Tab =
+  | "overview"
+  | "orders"
+  | "products"
+  | "catalog"
+  | "customers"
+  | "promos"
+  | "homepage"
+  | "branding"
+  | "shipping"
+  | "settings";
 
 const TABS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
   { id: "overview", label: "Overview", icon: <BoltIcon className="w-4 h-4" /> },
   { id: "orders", label: "Orders", icon: <CartIcon className="w-4 h-4" /> },
-  { id: "products", label: "Products", icon: <PackageIcon className="w-4 h-4" /> },
+  { id: "products", label: "Inventory", icon: <PackageIcon className="w-4 h-4" /> },
+  { id: "catalog", label: "Catalog", icon: <DiamondIcon className="w-3.5 h-3.5" /> },
   { id: "customers", label: "Customers", icon: <UserIcon className="w-4 h-4" /> },
   { id: "promos", label: "Promotions", icon: <TagIcon className="w-4 h-4" /> },
+  { id: "homepage", label: "Homepage", icon: <BellIcon className="w-4 h-4" /> },
+  { id: "branding", label: "Branding", icon: <LogoMark className="w-4 h-4" /> },
+  { id: "shipping", label: "Shipping", icon: <TruckIcon className="w-4 h-4" /> },
   { id: "settings", label: "Settings", icon: <SettingsIcon className="w-4 h-4" /> },
 ];
 
@@ -879,29 +895,11 @@ function SettingsTab({
     <div className="grid xl:grid-cols-2 gap-4 items-start">
       <div className="border border-paper/12 bg-coal/70 p-6 space-y-6">
         <h3 className="font-display font-bold text-xl">Storefront rules</h3>
-        <div>
-          <label className="font-mono text-[9px] tracking-[0.24em] uppercase text-paper/45">
-            Free white-glove threshold (USD)
-          </label>
-          <div className="mt-2 flex items-center gap-3">
-            <input
-              type="number"
-              min={0}
-              step={50}
-              value={local.freeShipAt}
-              onChange={(e) => setLocal((s) => ({ ...s, freeShipAt: Math.max(0, Number(e.target.value) || 0) }))}
-              className="w-32 bg-ink border border-paper/15 px-4 py-3 font-mono tabular-nums focus:outline-none focus:border-brass transition-colors"
-            />
-            <span className="text-xs text-paper/40">Orders above this ship free.</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between border-t border-paper/10 pt-5">
-          <div>
-            <div className="font-medium text-sm">Maintenance mode</div>
-            <div className="text-xs text-paper/40 mt-0.5">Shows the "polishing the gold" notice.</div>
-          </div>
-          <Toggle on={local.maintenance} onChange={(v) => setLocal((s) => ({ ...s, maintenance: v }))} />
-        </div>
+        <p className="text-xs text-paper/45 leading-relaxed border border-paper/10 px-4 py-3">
+          Delivery thresholds live under <span className="text-brass">Shipping</span> · maintenance
+          mode and store identity live under <span className="text-brass">Branding</span> · section
+          switches and copy live under <span className="text-brass">Homepage</span>.
+        </p>
         <div className="flex items-center justify-between border-t border-paper/10 pt-5">
           <div>
             <div className="font-medium text-sm">Private-list letters</div>
@@ -1200,8 +1198,12 @@ export default function Dashboard() {
           {tab === "overview" && <OverviewTab dash={dash} />}
           {tab === "orders" && <OrdersTab dash={dash} search={search} onStatus={onStatus} />}
           {tab === "products" && <ProductsTab dash={dash} search={search} onStock={onStock} onToggle={onToggleProduct} />}
+          {tab === "catalog" && <CatalogTab />}
           {tab === "customers" && <CustomersTab dash={dash} />}
           {tab === "promos" && <PromosTab dash={dash} onToggle={onTogglePromo} onMint={onMint} />}
+          {tab === "homepage" && <HomepageTab />}
+          {tab === "branding" && <BrandingTab />}
+          {tab === "shipping" && <ShippingTab />}
           {tab === "settings" && <SettingsTab settings={settings} onSave={onSaveSettings} onReset={onReset} />}
         </main>
 

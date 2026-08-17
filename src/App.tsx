@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-d
 import { AnimatePresence } from "framer-motion";
 import { CartProvider } from "./store/CartContext";
 import { AuthProvider } from "./store/AuthContext";
+import { SiteProvider } from "./store/site";
 import Layout from "./components/Layout";
 import { BootLoader } from "./components/Loader";
 import Home from "./pages/Home";
@@ -43,17 +44,19 @@ export default function App() {
   const [booted, setBooted] = useState(false);
 
   return (
-    <AuthProvider>
-      <CartProvider>
-        <HashRouter>
-          <AnimatePresence>
-            {!booted && <BootLoader key="boot" onDone={() => setBooted(true)} />}
-          </AnimatePresence>
-          <Layout>
-            <AnimatedRoutes />
-          </Layout>
-        </HashRouter>
-      </CartProvider>
-    </AuthProvider>
+    <SiteProvider>
+      <AuthProvider>
+        <CartProvider>
+          <HashRouter>
+            <AnimatePresence>
+              {!booted && <BootLoader key="boot" onDone={() => setBooted(true)} />}
+            </AnimatePresence>
+            <Layout>
+              <AnimatedRoutes />
+            </Layout>
+          </HashRouter>
+        </CartProvider>
+      </AuthProvider>
+    </SiteProvider>
   );
 }

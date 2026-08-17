@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { promoDiscount, type Product, type Promo } from "../data/products";
-import { getSettings, resolvePromo } from "./coupons";
+import { resolvePromo } from "./coupons";
+import { getSiteConfig } from "./site";
 
 export type CartLine = { product: Product; qty: number };
 export type ToastItem = { id: number; title: string; body?: string };
@@ -132,7 +133,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       count,
       subtotal,
-      freeAt: getSettings().freeShipAt,
+      freeAt: getSiteConfig().shipping.freeAt,
       promo,
       discount,
       add,

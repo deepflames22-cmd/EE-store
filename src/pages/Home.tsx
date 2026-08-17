@@ -31,12 +31,14 @@ import {
 import { LineMaskReveal, Marquee, OrbitBadge, Reveal, SectionHead, TiltFrame } from "../components/shared";
 import { AdTakeover } from "../components/ads";
 import { useCart } from "../store/CartContext";
+import { useSite } from "../store/site";
 import { useCountUp, useInView } from "../hooks/useInView";
 
 /* ---------- hero ---------- */
 
 function Hero() {
-  const hero = PRODUCTS[0];
+  const { site: cfg, products } = useSite();
+  const hero = products[0];
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
@@ -54,28 +56,23 @@ function Hero() {
             className="flex flex-wrap items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-gold"
           >
             <span className="w-2 h-2 bg-brass" />
-            Run 07 — Now boarding
+            {cfg.hero.kicker}
             <span className="text-mist">/ 500 numbered pieces</span>
           </motion.div>
 
           <LineMaskReveal
             className="mt-6 font-display font-extrabold tracking-tight leading-[0.9] text-[clamp(3rem,9vw,8.5rem)] text-ink"
             lines={[
-              <>Electronics,</>,
+              <>{cfg.hero.line1}</>,
+              <>{cfg.hero.line2}</>,
               <>
-                dressed <span className="italic font-medium text-gold">in</span>
-              </>,
-              <>
-                <span className="gold-shimmer">gold.</span>
+                <span className="gold-shimmer">{cfg.hero.accent}</span>
               </>,
             ]}
           />
 
           <Reveal delay={0.5}>
-            <p className="mt-8 max-w-md text-lg text-mist leading-relaxed">
-              A maison of electronic objets — headphones, timepieces, drones — built in
-              numbered runs and finished by hand in champagne gold.
-            </p>
+            <p className="mt-8 max-w-md text-lg text-mist leading-relaxed">{cfg.hero.sub}</p>
           </Reveal>
 
           <Reveal delay={0.62}>
@@ -85,7 +82,7 @@ function Hero() {
                 data-cursor
                 className="btn-sheen group bg-ink text-paper px-8 py-4 font-mono text-[11px] tracking-[0.26em] uppercase hover:bg-coal transition-colors duration-300 flex items-center gap-3"
               >
-                Enter the Shop
+                {cfg.hero.ctaShop}
                 <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
               </Link>
               <Link
@@ -94,17 +91,16 @@ function Hero() {
                 className="group border-2 border-ink px-8 py-[14px] font-mono text-[11px] tracking-[0.26em] uppercase hover:bg-brass hover:border-brass transition-all duration-300 flex items-center gap-3"
               >
                 <PlayIcon className="w-3.5 h-3.5 text-gold group-hover:text-ink transition-colors" />
-                View in 360°
+                {cfg.hero.ctaView}
               </Link>
             </div>
           </Reveal>
 
           <Reveal delay={0.74}>
             <div className="mt-12 flex flex-wrap gap-x-8 gap-y-3 font-mono text-[10px] tracking-[0.24em] uppercase text-mist">
-              <span>As seen in — Monocle</span>
-              <span>Dezeen</span>
-              <span>Wired</span>
-              <span>Hypebeast</span>
+              {cfg.brand.press.map((p, i) => (
+                <span key={p}>{i === 0 ? `As seen in — ${p}` : p}</span>
+              ))}
             </div>
           </Reveal>
         </motion.div>
@@ -174,7 +170,8 @@ function FlipDigit({ value }: { value: string }) {
 }
 
 function PromoCountdown() {
-  const target = useMemo(() => Date.now() + 5 * 86400000 + 7 * 3600000 + 42 * 60000, []);
+  const { site: cfg } = useSite();
+  const target = useMemo(() => Date.now() + cfg.promo.hours * 3600000, [cfg.promo.hours]);
   const [left, setLeft] = useState(target - Date.now());
   const { pushToast } = useCart();
   const [copied, setCopied] = useState(false);
@@ -191,12 +188,12 @@ function PromoCountdown() {
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText("GILD10");
+      await navigator.clipboard.writeText(cfg.promo.code);
     } catch {
       /* clipboard unavailable */
     }
     setCopied(true);
-    pushToast("Code copied — GILD10", "Paste it in the vault ledger at checkout.");
+    pushToast(`Code copied — ${cfg.promo.code}`, "Paste it in the vault ledger at checkout.");
     window.setTimeout(() => setCopied(false), 2000);
   };
 
@@ -219,12 +216,9 @@ function PromoCountdown() {
               <TimerIcon className="w-4 h-4" /> Promotion — closing soon
             </div>
             <h2 className="mt-5 font-display font-extrabold tracking-tight leading-[0.95] text-4xl md:text-5xl">
-              The gilded hours <span className="italic font-medium text-brass">are numbered.</span>
+              {cfg.promo.title} <span className="italic font-medium text-brass">{cfg.promo.accent}</span>
             </h2>
-            <p className="mt-4 max-w-md text-paper/55 leading-relaxed">
-              Take ten percent off everything in Run 07 while the counter runs. One code,
-              every objet, no asterisks.
-            </p>
+            <p className="mt-4 max-w-md text-paper/55 leading-relaxed">{cfg.promo.sub}</p>
           </Reveal>
         </div>
 
@@ -249,7 +243,7 @@ function PromoCountdown() {
           <Reveal delay={0.2}>
             <div className="border-2 border-dashed border-brass/60 bg-ink/40 p-5 text-center">
               <span className="font-mono text-[9px] tracking-[0.26em] uppercase text-paper/50">Your code</span>
-              <div className="mt-2 font-display font-extrabold text-3xl tracking-[0.14em] text-brass">GILD10</div>
+              <div className="mt-2 font-display font-extrabold text-3xl tracking-[0.14em] text-brass">{cfg.promo.code}</div>
               <button
                 data-cursor
                 onClick={copyCode}
@@ -275,6 +269,7 @@ function PromoCountdown() {
 
 function ProductRail() {
   const { add } = useCart();
+  const { site: cfg, products } = useSite();
   const navigate = useNavigate();
   const railRef = useRef<HTMLDivElement>(null);
   const scroll = (dir: number) => railRef.current?.scrollBy({ left: dir * 360, behavior: "smooth" });
@@ -284,10 +279,10 @@ function ProductRail() {
       <div className="mx-auto max-w-[88rem] px-5 md:px-8">
         <SectionHead
           index="01"
-          kicker="The Current Run"
+          kicker={cfg.rail.kicker}
           title={
             <>
-              Seven objets, <span className="italic font-medium text-gold">one metal.</span>
+              {cfg.rail.title} <span className="italic font-medium text-gold">{cfg.rail.accent}</span>
             </>
           }
           right={
@@ -307,7 +302,7 @@ function ProductRail() {
         ref={railRef}
         className="mt-12 flex gap-6 overflow-x-auto no-scrollbar snap-x snap-mandatory px-5 md:px-[max(2rem,calc((100vw-88rem)/2+2rem))]"
       >
-        {PRODUCTS.map((p, i) => (
+        {products.map((p, i) => (
           <RailCard key={p.id} product={p} index={i} onAdd={add} onView={() => navigate(`/product/${p.id}`)} />
         ))}
         <Link
@@ -394,7 +389,8 @@ function RailCard({
 
 function Spotlight() {
   const { add } = useCart();
-  const obj = PRODUCTS.find((p) => p.id === "meridian-s") ?? PRODUCTS[1];
+  const { site: cfg, products } = useSite();
+  const obj = products.find((p) => p.id === cfg.spotlight.productId) ?? products[1] ?? products[0];
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
@@ -420,7 +416,7 @@ function Spotlight() {
                 className="blend-lighten relative mx-auto w-[78%] animate-float drop-shadow-[0_30px_60px_rgba(201,162,75,0.3)]"
               />
               <span className="absolute top-5 left-5 font-mono text-[9px] tracking-[0.24em] uppercase text-goldlight bg-ink/70 border border-brass/30 px-2.5 py-1.5">
-                Objet of the season
+                {cfg.spotlight.badge}
               </span>
               <span className="absolute bottom-5 right-5 font-mono text-[9px] tracking-[0.24em] uppercase text-brass">
                 № 118 — 500
@@ -432,7 +428,7 @@ function Spotlight() {
         <div>
           <Reveal>
             <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-brass">
-              <span className="w-8 h-px bg-brass" /> This week only
+              <span className="w-8 h-px bg-brass" /> {cfg.spotlight.note}
             </div>
             <h2 className="mt-5 font-display font-extrabold tracking-tight leading-[0.92] text-5xl md:text-7xl">
               {obj.name}
@@ -545,6 +541,7 @@ function WaterLayer({ flooded }: { flooded: boolean }) {
 function Disciplines() {
   const navigate = useNavigate();
   const { add } = useCart();
+  const { site: cfg, products } = useSite();
   const [open, setOpen] = useState<Category | null>(null);
   const [activeCat, setActiveCat] = useState<Category | null>(null);
   const reduce = useReducedMotion();
@@ -603,8 +600,8 @@ function Disciplines() {
         >
 
           {CATEGORIES.map((c, i) => {
-            const items = PRODUCTS.filter((p) => p.category === c);
-            const meta = DISCIPLINE_META[c];
+            const items = products.filter((p) => p.category === c);
+            const meta = cfg.disciplines[c] ?? DISCIPLINE_META[c];
             const isOpen = open === c;
             const sig = items[0];
             const rest = items.slice(1);
@@ -863,7 +860,7 @@ function Disciplines() {
                 <AnimatePresence mode="wait">
                   <motion.img
                     key={activeCat}
-                    src={PRODUCTS.find((p) => p.category === activeCat)?.img}
+                    src={products.find((p) => p.category === activeCat)?.img}
                     alt=""
                     initial={{ opacity: 0, scale: 0.85, rotate: -6 }}
                     animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -889,11 +886,13 @@ function Disciplines() {
 
 function BundlePromo() {
   const { addMany, pushToast } = useCart();
+  const { site: cfg, products } = useSite();
+  const save = cfg.bundle.save;
   const items = BUNDLE.itemIds
-    .map((id) => PRODUCTS.find((p) => p.id === id))
+    .map((id) => products.find((p) => p.id === id))
     .filter((p): p is Product => Boolean(p));
   const full = items.reduce((s, p) => s + p.price, 0);
-  const price = full - BUNDLE.save;
+  const price = full - save;
 
   return (
     <section className="pb-24">
@@ -906,27 +905,24 @@ function BundlePromo() {
             <div className="relative grid lg:grid-cols-12 gap-8 items-center px-6 md:px-12 py-12 md:py-14">
               <div className="lg:col-span-5">
                 <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-ink/70">
-                  <GiftIcon className="w-4 h-4" /> Bundle — {BUNDLE.note}
+                  <GiftIcon className="w-4 h-4" /> Bundle — {cfg.bundle.note}
                 </div>
                 <h2 className="mt-4 font-display font-extrabold tracking-tight leading-[0.92] text-4xl md:text-6xl text-ink">
-                  The Travel <span className="italic font-medium">Set.</span>
+                  {cfg.bundle.title} <span className="italic font-medium">{cfg.bundle.accent}</span>
                 </h2>
-                <p className="mt-4 max-w-sm text-ink/70 leading-relaxed">
-                  Headphones, earbuds and the column of sound — sealed in one lacquered
-                  case, numbered as a set.
-                </p>
+                <p className="mt-4 max-w-sm text-ink/70 leading-relaxed">{cfg.bundle.sub}</p>
                 <div className="mt-6 flex flex-wrap items-baseline gap-4">
                   <span className="font-display font-extrabold text-4xl text-ink tabular-nums">{formatPrice(price)}</span>
                   <span className="text-ink/45 line-through text-xl tabular-nums">{formatPrice(full)}</span>
                   <span className="bg-ink text-brass font-mono text-[10px] tracking-[0.18em] uppercase px-2.5 py-1.5">
-                    Save {formatPrice(BUNDLE.save)}
+                    Save {formatPrice(save)}
                   </span>
                 </div>
                 <button
                   data-cursor
                   onClick={() => {
                     addMany(items);
-                    pushToast(`${formatPrice(BUNDLE.save)} saved`, "The set travels as one serial.");
+                    pushToast(`${formatPrice(save)} saved`, "The set travels as one serial.");
                   }}
                   className="btn-sheen group mt-7 bg-ink text-paper px-8 py-4 font-mono text-[11px] tracking-[0.26em] uppercase hover:bg-coal transition-colors flex items-center gap-3"
                 >
@@ -964,6 +960,7 @@ function BundlePromo() {
 /* ---------- craft (sticky two-column) ---------- */
 
 function Craft() {
+  const { site: cfg } = useSite();
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
@@ -976,31 +973,23 @@ function Craft() {
         <div className="lg:sticky lg:top-32 self-start">
           <SectionHead
             index="03"
-            kicker="The Atelier"
+            kicker={cfg.craft.kicker}
             dark
             title={
               <>
-                Machines, finished like <span className="italic font-medium text-brass">jewellery.</span>
+                {cfg.craft.title} <span className="italic font-medium text-brass">{cfg.craft.accent}</span>
               </>
             }
           />
           <Reveal delay={0.15}>
-            <p className="mt-7 max-w-md text-paper/60 leading-relaxed">
-              Every objet passes through eleven hands before it is sealed. Billet
-              aluminium is machined, bead-blasted, then dressed in a 24-karat PVD coat
-              the colour of late afternoon.
-            </p>
+            <p className="mt-7 max-w-md text-paper/60 leading-relaxed">{cfg.craft.copy}</p>
           </Reveal>
           <Reveal delay={0.25}>
             <ul className="mt-9 space-y-4">
-              {[
-                ["24K PVD coat", "applied in a single pass, never painted"],
-                ["Sapphire & brass", "glass that outlives the battery inside"],
-                ["Numbered for life", "each serial engraved, registered, repairable"],
-              ].map(([k, v]) => (
-                <li key={k} className="flex items-baseline gap-4 border-b border-paper/10 pb-4">
-                  <span className="font-display font-bold text-goldlight shrink-0 w-44">{k}</span>
-                  <span className="text-sm text-paper/50">{v}</span>
+              {cfg.craft.points.map((pt) => (
+                <li key={pt.k} className="flex items-baseline gap-4 border-b border-paper/10 pb-4">
+                  <span className="font-display font-bold text-goldlight shrink-0 w-44">{pt.k}</span>
+                  <span className="text-sm text-paper/50">{pt.v}</span>
                 </li>
               ))}
             </ul>
@@ -1023,7 +1012,7 @@ function Craft() {
               <img src={LIFESTYLE_IMG} alt="The AURION atelier at night" className="w-full aspect-[4/3] object-cover animate-kenburns" />
             </div>
             <span className="absolute bottom-4 left-4 font-mono text-[9px] tracking-[0.24em] uppercase text-paper bg-ink/80 border border-brass/30 px-3 py-1.5">
-              Fig. 01 — Geneva atelier, 23:40
+              {cfg.craft.figLabel}
             </span>
           </motion.div>
           <motion.div style={{ y: y2 }} className="grid grid-cols-2 gap-8">
@@ -1048,13 +1037,16 @@ function Craft() {
 
 /* ---------- house services ledger ---------- */
 
+const SERVICE_ICONS = {
+  truck: <TruckIcon className="w-6 h-6" />,
+  shield: <ShieldIcon className="w-6 h-6" />,
+  tag: <TagIcon className="w-6 h-6" />,
+  globe: <GlobeIcon className="w-6 h-6" />,
+} as const;
+
 function ServicesLedger() {
-  const rows = [
-    { icon: <TruckIcon className="w-6 h-6" />, title: "White-glove delivery", note: "Insured, hand-carried, gloves on — complimentary above $500." },
-    { icon: <ShieldIcon className="w-6 h-6" />, title: "Repair for life", note: "Every serial ever issued is serviced at the atelier, forever." },
-    { icon: <TagIcon className="w-6 h-6" />, title: "30-day returns", note: "Change your mind; the serial is retired, never resold as new." },
-    { icon: <GlobeIcon className="w-6 h-6" />, title: "Gold exchange", note: "Trade a retired objet toward the next run, at book value." },
-  ];
+  const { site: cfg } = useSite();
+  const rows = cfg.services.items;
 
   return (
     <section className="py-24 border-t-2 border-ink">
@@ -1064,7 +1056,7 @@ function ServicesLedger() {
           kicker="House Services"
           title={
             <>
-              What the house <span className="italic font-medium text-gold">guarantees.</span>
+              {cfg.services.title} <span className="italic font-medium text-gold">{cfg.services.accent}</span>
             </>
           }
         />
@@ -1074,7 +1066,7 @@ function ServicesLedger() {
               <div className="group relative grid grid-cols-[auto_auto_1fr] md:grid-cols-[80px_60px_1fr_auto] items-center gap-5 md:gap-8 border-b-2 border-ink py-6 px-2 overflow-hidden">
                 <span className="absolute inset-0 bg-brass/15 translate-x-[-101%] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0" />
                 <span className="relative font-mono text-sm text-gold">0{i + 1}</span>
-                <span className="relative text-gold transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">{r.icon}</span>
+                <span className="relative text-gold transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">{SERVICE_ICONS[r.icon] ?? SERVICE_ICONS.truck}</span>
                 <span className="relative flex flex-col md:flex-row md:items-baseline md:gap-6">
                   <span className="font-display font-bold text-xl md:text-2xl">{r.title}</span>
                   <span className="text-sm text-mist">{r.note}</span>
@@ -1099,12 +1091,14 @@ const STATS = [
 ];
 
 function StatsBand() {
+  const { site: cfg } = useSite();
+  const items = cfg.stats.items;
   const { ref, inView } = useInView<HTMLDivElement>(0.3);
   return (
     <section className="plate-pine text-paper border-y-2 border-ink">
       <div ref={ref} className="mx-auto max-w-[88rem] px-5 md:px-8 grid grid-cols-2 lg:grid-cols-4">
-        {STATS.map((s, i) => (
-          <StatCell key={s.label} {...s} active={inView} delay={i * 0.1} last={i === STATS.length - 1} />
+        {items.map((s, i) => (
+          <StatCell key={`${s.label}-${i}`} {...s} active={inView} delay={i * 0.1} last={i === items.length - 1} />
         ))}
       </div>
     </section>

@@ -1,5 +1,5 @@
-import { BUNDLE, PRODUCTS, PROMOS, formatPrice } from "../data/products";
-import { getSettings } from "./coupons";
+import { BUNDLE, PROMOS, formatPrice } from "../data/products";
+import { getProducts, getSiteConfig } from "./site";
 
 const KEY_KEY = "aurion-openrouter-key";
 const MODEL_KEY = "aurion-openrouter-model";
@@ -83,32 +83,36 @@ export function clearChat() {
 /* ---------- context ---------- */
 
 export function buildSystemPrompt(): string {
-  const s = getSettings();
-  const catalog = PRODUCTS.map(
-    (p) =>
-      `- ${p.name} (${p.category}): ${formatPrice(p.price)}${p.was ? ` — was ${formatPrice(p.was)}` : ""}. ${p.specs.join(", ")}. ${p.blurb}`
-  ).join("\n");
+  const cfg = getSiteConfig();
+  const products = getProducts();
+  const catalog = products
+    .map(
+      (p) =>
+        `- ${p.name} (${p.category}): ${formatPrice(p.price)}${p.was ? ` — was ${formatPrice(p.was)}` : ""}. ${p.specs.join(", ")}. ${p.blurb}`
+    )
+    .join("\n");
   const promos = PROMOS.map((p) => `- ${p.code}: ${p.label}`).join("\n");
-  const bundle = PRODUCTS.filter((p) => BUNDLE.itemIds.includes(p.id))
+  const bundle = products
+    .filter((p) => BUNDLE.itemIds.includes(p.id))
     .map((p) => p.name)
     .join(" + ");
 
   return [
-    "You are the Concierge of AURION, a maison of numbered electronic objets finished in champagne gold (headphones, earbuds, speakers, a smartwatch, a pocket camera, a keyboard, a drone).",
-    "Tone: warm, precise, quietly luxurious — like a Geneva atelier. Keep answers short (under 120 words unless asked for detail). Never invent products, prices or codes beyond what is listed below. Format prices with $.",
+    cfg.ai.persona,
+    `Tone: ${cfg.ai.tone} Never invent products, prices or codes beyond what is listed below. Format prices with $.`,
     "",
     "CATALOG (Run 07):",
     catalog,
     "",
     "ACTIVE CODES:",
     promos,
-    `- BUNDLE: The Travel Set (${bundle}) saves ${formatPrice(BUNDLE.save)}.`,
+    `- BUNDLE: The Travel Set (${bundle}) saves ${formatPrice(cfg.bundle.save)}.`,
     "",
     "HOUSE POLICIES:",
-    `- Orders above ${formatPrice(s.freeShipAt)} ship complimentary (white-glove above that, hand-carried).`,
+    `- Orders above ${formatPrice(cfg.shipping.freeAt)} ship complimentary (white-glove above that, hand-carried).`,
     "- 30-day returns; every serial is repairable for life at the atelier.",
     "- 24-month warranty; numbered runs are never re-made.",
-    "- Showroom: Rue du Rhône 12, Geneva · Tue–Sat 10:00–18:30 · concierge@aurion.example.",
+    `- Showroom: ${cfg.showroom.address} · ${cfg.showroom.hours} · ${cfg.showroom.email}.`,
     "If asked about an order, tell them order ids look like AU-XXXX and appear under Profile → Orders. If you do not know something, say the concierge desk will follow up by letter.",
   ].join("\n");
 }

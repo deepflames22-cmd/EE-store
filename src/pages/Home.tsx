@@ -29,6 +29,7 @@ import {
   TruckIcon,
 } from "../components/Icons";
 import { LineMaskReveal, Marquee, OrbitBadge, Reveal, SectionHead, TiltFrame } from "../components/shared";
+import { AdTakeover } from "../components/ads";
 import { useCart } from "../store/CartContext";
 import { useCountUp, useInView } from "../hooks/useInView";
 
@@ -485,34 +486,98 @@ function Spotlight() {
 
 /* ---------- disciplines index ---------- */
 
+const DISCIPLINE_META: Record<Category, { blurb: string; note: string; feats: string[] }> = {
+  Audio: {
+    blurb:
+      "Columns of sound, sealed chambers and drivers tuned by ear in the Geneva listening room. If it sings, it ships; if it merely plays, it goes back to the bench.",
+    note: "House note — every grille is perforated by hand. No two patterns ever align.",
+    feats: ["24-bit / 192kHz", "Adaptive ANC", "360° radiators", "11-min charge"],
+  },
+  Wearables: {
+    blurb:
+      "Timepieces that compute. Sapphire glass, machined gold cases and batteries that outlast the fashion cycle they were born into.",
+    note: "House note — cases are machined from billet, never cast. Run a thumb along the chamfer.",
+    feats: ["Sapphire crystal", "10-day reserve", "5ATM sealed", "Titanium crown"],
+  },
+  Imaging: {
+    blurb:
+      "Pocket cameras and folding drones with stabilised gold gimbals. Optics graded for golden hour — because that is the house colour.",
+    note: "House note — each lens is collimated twice: once cold, once warm.",
+    feats: ["8K gimbal", "f/1.8 prime", "40-min flight", "4K 120fps"],
+  },
+  Desk: {
+    blurb:
+      "Instruments for the working surface — weighted, damped and silent enough to think beside. The desk is a stage; these are its props.",
+    note: "House note — a brass core sits inside every frame. Heft is a feature, not an accident.",
+    feats: ["Hot-swap tactiles", "Tri-mode link", "2.1kg brass core", "PBT keycaps"],
+  },
+};
+
+function WaveBand({ className = "" }: { className?: string }) {
+  return (
+    <span className={`absolute left-0 w-[200%] pointer-events-none ${className}`} aria-hidden>
+      <svg viewBox="0 0 1440 24" preserveAspectRatio="none" className="block w-full h-full">
+        <path
+          fill="currentColor"
+          d="M0 12 C 60 2 120 22 180 12 C 240 2 300 22 360 12 C 420 2 480 22 540 12 C 600 2 660 22 720 12 C 780 2 840 22 900 12 C 960 2 1020 22 1080 12 C 1140 2 1200 22 1260 12 C 1320 2 1380 22 1440 12 L 1440 24 L 0 24 Z"
+        />
+      </svg>
+    </span>
+  );
+}
+
+function WaterLayer({ flooded }: { flooded: boolean }) {
+  const waveVis = flooded ? "opacity-100" : "opacity-0 group-hover:opacity-100";
+  return (
+    <span className="water-rise" aria-hidden>
+      <WaveBand className={`-top-[13px] h-3.5 text-goldlight/60 animate-wave-back transition-opacity duration-500 delay-200 ${waveVis}`} />
+      <WaveBand className={`-top-3 h-3 text-brass animate-wave-fast transition-opacity duration-300 delay-100 ${waveVis}`} />
+      <span className="absolute inset-0 bg-brass" />
+      <span className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-goldlight/30 to-transparent" />
+      <span className="bubble w-2 h-2 left-[14%] bottom-4" style={{ animationDelay: "0.5s" }} />
+      <span className="bubble w-1.5 h-1.5 left-[44%] bottom-8" style={{ animationDelay: "1.6s" }} />
+      <span className="bubble w-2.5 h-2.5 left-[72%] bottom-3" style={{ animationDelay: "2.5s" }} />
+      <span className="bubble w-1.5 h-1.5 left-[88%] bottom-6" style={{ animationDelay: "0.9s" }} />
+    </span>
+  );
+}
+
 function Disciplines() {
   const navigate = useNavigate();
   const { add } = useCart();
   const [open, setOpen] = useState<Category | null>(null);
+  const [activeCat, setActiveCat] = useState<Category | null>(null);
   const reduce = useReducedMotion();
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [blob, setBlob] = useState({ x: -9999, y: -9999 });
-  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
-  const lastRipple = useRef(0);
-  const idRef = useRef(0);
+  const [fine] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(pointer: fine)").matches : false
+  );
+  const followerRef = useRef<HTMLDivElement>(null);
+  const target = useRef({ x: -600, y: -600 });
+  const cur = useRef({ x: -600, y: -600, r: 0 });
 
-  const onMove = (e: React.MouseEvent) => {
-    const rect = wrapRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setBlob({ x, y });
-    if (reduce) return;
-    const now = performance.now();
-    if (now - lastRipple.current < 130) return;
-    lastRipple.current = now;
-    const id = ++idRef.current;
-    setRipples((r) => [...r.slice(-6), { id, x, y }]);
-    window.setTimeout(() => setRipples((r) => r.filter((p) => p.id !== id)), 1050);
-  };
+  useEffect(() => {
+    if (!fine || reduce) return;
+    let raf = 0;
+    const loop = () => {
+      const c = cur.current;
+      const t = target.current;
+      c.x += (t.x - c.x) * 0.13;
+      c.y += (t.y - c.y) * 0.13;
+      const tilt = Math.max(-9, Math.min(9, (t.x - c.x) * 0.06));
+      c.r += (tilt - c.r) * 0.09;
+      if (followerRef.current) {
+        followerRef.current.style.transform = `translate3d(${c.x}px, ${c.y}px, 0) translate(-50%, -52%) rotate(${c.r}deg)`;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [fine, reduce]);
+
+  const toggle = (c: Category) => setOpen((o) => (o === c ? null : c));
 
   return (
-    <section className="py-24">
+    <section className="py-24 overflow-hidden">
       <div className="mx-auto max-w-[88rem] px-5 md:px-8">
         <SectionHead
           index="02"
@@ -524,61 +589,68 @@ function Disciplines() {
           }
           right={
             <p className="max-w-xs text-sm text-mist leading-relaxed">
-              Move across the ledger — the water follows. Click a discipline to open its
-              shelf.
+              Glide across the ledger — the objet follows your cursor and each row floods
+              like water. Click to open the shelf.
             </p>
           }
         />
         <div
-          ref={wrapRef}
-          onMouseMove={onMove}
-          onMouseLeave={() => setBlob({ x: -9999, y: -9999 })}
-          className="mt-12 border-t-2 border-ink relative overflow-hidden"
+          onMouseMove={(e) => {
+            target.current = { x: e.clientX, y: e.clientY };
+          }}
+          onMouseLeave={() => setActiveCat(null)}
+          className="mt-12 border-t-2 border-ink relative"
         >
-          <div className="water-blob" style={{ left: blob.x, top: blob.y }} aria-hidden />
-          {ripples.map((r) => (
-            <span key={`${r.id}-a`} className="ripple-ring" style={{ left: r.x, top: r.y }} aria-hidden>
-              <span className="ripple-ring inner" style={{ left: "50%", top: "50%", transform: "translate(-50%,-50%)" }} />
-            </span>
-          ))}
 
           {CATEGORIES.map((c, i) => {
             const items = PRODUCTS.filter((p) => p.category === c);
+            const meta = DISCIPLINE_META[c];
             const isOpen = open === c;
+            const sig = items[0];
+            const rest = items.slice(1);
             return (
               <div key={c} className="relative border-b-2 border-ink">
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   data-cursor
-                  onClick={() => setOpen(isOpen ? null : c)}
+                  onClick={() => toggle(c)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggle(c);
+                    }
+                  }}
+                  onMouseEnter={() => setActiveCat(c)}
                   aria-expanded={isOpen}
-                  className="group relative w-full grid grid-cols-[auto_1fr_auto] md:grid-cols-[90px_1fr_auto_auto] items-center gap-4 md:gap-8 py-7 px-2 text-left"
+                  className={`group relative w-full grid grid-cols-[auto_1fr_auto] md:grid-cols-[90px_1fr_auto_auto] items-center gap-4 md:gap-8 py-7 px-2 text-left cursor-pointer overflow-hidden ${
+                    isOpen ? "water-open" : ""
+                  }`}
                 >
-                  <span className={`font-mono text-sm transition-colors duration-300 ${isOpen ? "text-gold" : "text-mist group-hover:text-gold"}`}>
+                  <WaterLayer flooded={isOpen} />
+                  <span className={`relative font-mono text-sm transition-colors duration-300 ${isOpen ? "text-ink" : "text-mist group-hover:text-ink"}`}>
                     0{i + 1}
                   </span>
-                  <span className={`font-display font-extrabold text-4xl md:text-6xl tracking-tight transition-all duration-400 ${isOpen ? "text-gold italic" : "text-ink group-hover:text-gold group-hover:translate-x-2"}`}>
+                  <span
+                    className={`relative font-display font-extrabold text-4xl md:text-6xl tracking-tight transition-all duration-400 ${
+                      isOpen ? "text-ink italic" : "text-ink group-hover:translate-x-2 group-hover:italic"
+                    }`}
+                  >
                     {c}
                   </span>
-                  <span className="relative hidden md:block w-20 h-20 plate-dark border-2 border-ink/20 group-hover:border-brass p-2 transition-all duration-400 group-hover:rotate-3 overflow-hidden">
-                    <img
-                      src={items[0]?.img}
-                      alt=""
-                      className="blend-lighten w-full h-full object-contain transition-transform duration-500 group-hover:scale-115"
-                    />
+                  <span className={`relative hidden sm:block font-mono text-[10px] tracking-[0.24em] uppercase transition-colors duration-300 ${isOpen ? "text-ink/70" : "text-mist group-hover:text-ink/70"}`}>
+                    {items.length} objets
                   </span>
-                  <span className="flex items-center gap-4">
-                    <span className="hidden sm:block font-mono text-[10px] tracking-[0.24em] uppercase text-mist">
-                      {items.length} objets
-                    </span>
-                    <span
-                      className={`w-11 h-11 border-2 flex items-center justify-center transition-all duration-400 ${
-                        isOpen ? "bg-ink border-ink text-brass rotate-90" : "border-ink/25 text-ink group-hover:border-ink group-hover:border-brass group-hover:bg-brass group-hover:text-ink"
-                      }`}
-                    >
-                      <ArrowRight className={`w-4 h-4 transition-transform duration-400 ${isOpen ? "rotate-90" : ""}`} />
-                    </span>
+                  <span
+                    className={`relative w-11 h-11 border-2 flex items-center justify-center transition-all duration-400 ${
+                      isOpen
+                        ? "bg-ink border-ink text-brass rotate-90"
+                        : "border-ink/25 text-ink group-hover:border-ink group-hover:bg-ink group-hover:text-brass"
+                    }`}
+                  >
+                    <ArrowRight className={`w-4 h-4 transition-transform duration-400 ${isOpen ? "rotate-90" : ""}`} />
                   </span>
-                </button>
+                </div>
 
                 <AnimatePresence initial={false}>
                   {isOpen && (
@@ -588,78 +660,185 @@ function Disciplines() {
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                      className="overflow-hidden"
+                      className="overflow-hidden bg-bone/70 border-t-2 border-ink"
                     >
-                      <div className="px-2 pb-9 pt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {items.map((p, pi) => (
-                          <motion.div
-                            key={p.id}
-                            initial={{ opacity: 0, y: 26 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.08 + pi * 0.07 }}
-                            className="group/card border-2 border-ink bg-paper hover-lift hover:border-gold"
+                      <div className="px-3 md:px-6 py-9 grid lg:grid-cols-12 gap-8">
+                        {/* shelf copy */}
+                        <motion.div
+                          initial={{ opacity: 0, x: -26 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.5, delay: 0.06 }}
+                          className="lg:col-span-4"
+                        >
+                          <div className="font-mono text-[10px] tracking-[0.28em] uppercase text-gold">
+                            The {c} shelf · {items.length} objets
+                          </div>
+                          <p className="mt-4 text-mist leading-relaxed">{meta.blurb}</p>
+                          <blockquote className="mt-5 border-l-2 border-brass pl-4 italic text-ink/70 leading-relaxed">
+                            {meta.note}
+                          </blockquote>
+                          <div className="mt-6 flex flex-wrap gap-2">
+                            {meta.feats.map((f, fi) => (
+                              <motion.span
+                                key={f}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.4, delay: 0.18 + fi * 0.06 }}
+                                className="border-2 border-ink/15 bg-paper px-3 py-1.5 font-mono text-[9px] tracking-[0.16em] uppercase text-mist"
+                              >
+                                {f}
+                              </motion.span>
+                            ))}
+                          </div>
+                          <motion.button
+                            data-cursor
+                            onClick={() => navigate("/shop", { state: { cat: c } })}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.4, delay: 0.34 }}
+                            className="group/all mt-7 inline-flex items-center gap-3 font-mono text-[10px] tracking-[0.26em] uppercase text-ink hover:text-gold transition-colors"
                           >
-                            <button
-                              data-cursor
-                              onClick={() => navigate(`/product/${p.id}`)}
-                              className="relative block w-full plate-dark overflow-hidden"
-                              aria-label={`View ${p.name}`}
+                            Enter the discipline
+                            <ArrowUpRight className="w-4 h-4 text-gold transition-transform duration-300 group-hover/all:translate-x-1 group-hover/all:-translate-y-1" />
+                          </motion.button>
+                        </motion.div>
+
+                        {/* signature + mini ledger */}
+                        <div className="lg:col-span-8 space-y-4">
+                          {sig && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 26 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.5, delay: 0.1 }}
+                              className="group/sig grid sm:grid-cols-[190px_1fr] border-2 border-ink bg-paper overflow-hidden hover-lift hover:border-gold"
                             >
-                              {p.was && (
-                                <span className="absolute top-3 left-3 z-10 bg-rust text-paper font-mono text-[9px] font-medium tracking-[0.16em] px-2 py-1">
-                                  −{Math.round((1 - p.price / p.was) * 100)}%
-                                </span>
-                              )}
-                              {!p.was && p.tag && (
-                                <span className="absolute top-3 left-3 z-10 bg-brass text-ink font-mono text-[9px] font-medium tracking-[0.16em] px-2 py-1">
-                                  {p.tag}
-                                </span>
-                              )}
-                              <img
-                                src={p.img}
-                                alt={p.name}
-                                loading="lazy"
-                                className="blend-lighten mx-auto h-48 md:h-56 object-contain px-8 py-8 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:scale-108 group-hover/card:-rotate-1"
-                              />
-                            </button>
-                            <div className="px-5 py-4 flex items-center justify-between gap-3 border-t-2 border-ink">
-                              <div className="min-w-0">
+                              <button
+                                data-cursor
+                                onClick={() => navigate(`/product/${sig.id}`)}
+                                className="plate-dark relative p-6"
+                                aria-label={`View ${sig.name}`}
+                              >
+                                {sig.was && (
+                                  <span className="absolute top-3 left-3 z-10 bg-rust text-paper font-mono text-[9px] font-medium tracking-[0.16em] px-2 py-1">
+                                    −{Math.round((1 - sig.price / sig.was) * 100)}%
+                                  </span>
+                                )}
+                                <img
+                                  src={sig.img}
+                                  alt={sig.name}
+                                  loading="lazy"
+                                  className="blend-lighten h-36 sm:h-full w-full object-contain transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/sig:scale-107 group-hover/sig:-rotate-1"
+                                />
+                              </button>
+                              <div className="p-5 md:p-6 flex flex-col">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="font-mono text-[9px] tracking-[0.24em] uppercase text-gold">
+                                      Signature of the shelf
+                                    </div>
+                                    <button
+                                      data-cursor
+                                      onClick={() => navigate(`/product/${sig.id}`)}
+                                      className="font-display font-extrabold text-2xl md:text-3xl tracking-tight hover:text-gold transition-colors"
+                                    >
+                                      {sig.name}
+                                    </button>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <div className="font-display font-bold text-xl tabular-nums">{formatPrice(sig.price)}</div>
+                                    {sig.was && (
+                                      <div className="text-xs text-mist/60 line-through tabular-nums">{formatPrice(sig.was)}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="mt-2 text-sm text-mist leading-relaxed">{sig.blurb}</p>
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                  {sig.specs.map((s) => (
+                                    <span key={s} className="font-mono text-[9px] tracking-[0.14em] uppercase text-mist border border-ink/15 px-2 py-1">
+                                      {s}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="mt-auto pt-5 flex flex-wrap gap-2.5">
+                                  <button
+                                    data-cursor
+                                    onClick={() => add(sig)}
+                                    className="btn-sheen bg-ink text-paper px-5 py-2.5 font-mono text-[10px] tracking-[0.22em] uppercase hover:bg-coal transition-colors flex items-center gap-2.5"
+                                  >
+                                    <PlusIcon className="w-3.5 h-3.5 text-brass" /> Add to vault
+                                  </button>
+                                  <button
+                                    data-cursor
+                                    onClick={() => navigate(`/product/${sig.id}`)}
+                                    className="border-2 border-ink px-5 py-2.5 font-mono text-[10px] tracking-[0.22em] uppercase hover:bg-brass hover:border-brass transition-all duration-300"
+                                  >
+                                    Full details
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {rest.map((p, pi) => (
+                            <motion.div
+                              key={p.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.45, delay: 0.16 + pi * 0.06 }}
+                              className="group/row flex items-center gap-4 border-2 border-ink/15 bg-paper px-4 py-3 hover:border-ink hover:-translate-y-0.5 transition-all duration-300"
+                            >
+                              <button
+                                data-cursor
+                                onClick={() => navigate(`/product/${p.id}`)}
+                                className="w-14 h-14 shrink-0 plate-dark border border-ink/20 p-1"
+                                aria-label={`View ${p.name}`}
+                              >
+                                <img
+                                  src={p.img}
+                                  alt={p.name}
+                                  loading="lazy"
+                                  className="blend-lighten w-full h-full object-contain transition-transform duration-500 group-hover/row:scale-110"
+                                />
+                              </button>
+                              <div className="flex-1 min-w-0">
                                 <button
                                   data-cursor
                                   onClick={() => navigate(`/product/${p.id}`)}
-                                  className="font-display font-bold text-lg hover:text-gold transition-colors truncate block"
+                                  className="font-display font-bold truncate block hover:text-gold transition-colors"
                                 >
                                   {p.name}
                                 </button>
-                                <div className="text-sm tabular-nums">
-                                  <span className="text-mist">{formatPrice(p.price)}</span>
-                                  {p.was && <span className="ml-2 text-mist/50 line-through">{formatPrice(p.was)}</span>}
+                                <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-mist">
+                                  {p.category} · {p.specs[0]}
                                 </div>
+                              </div>
+                              <div className="text-sm tabular-nums whitespace-nowrap">
+                                {formatPrice(p.price)}
+                                {p.was && <span className="ml-2 text-mist/50 line-through">{formatPrice(p.was)}</span>}
                               </div>
                               <button
                                 data-cursor
                                 onClick={() => add(p)}
                                 aria-label={`Add ${p.name} to cart`}
-                                className="shrink-0 w-11 h-11 border-2 border-ink flex items-center justify-center hover:bg-brass hover:border-brass hover:rotate-90 transition-all duration-300"
+                                className="shrink-0 w-10 h-10 border-2 border-ink flex items-center justify-center hover:bg-brass hover:border-brass hover:rotate-90 transition-all duration-300"
                               >
                                 <PlusIcon className="w-4 h-4" />
                               </button>
-                            </div>
-                          </motion.div>
-                        ))}
-                        <motion.button
-                          data-cursor
-                          onClick={() => navigate("/shop", { state: { cat: c } })}
-                          initial={{ opacity: 0, y: 26 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5, delay: 0.08 + items.length * 0.07 }}
-                          className="border-2 border-dashed border-ink/30 min-h-[220px] flex flex-col items-center justify-center gap-3 hover:border-gold hover:bg-brass/10 transition-all duration-300 group/all"
-                        >
-                          <ArrowUpRight className="w-8 h-8 text-gold transition-transform duration-300 group-hover/all:translate-x-1.5 group-hover/all:-translate-y-1.5" />
-                          <span className="font-mono text-[10px] tracking-[0.26em] uppercase text-mist group-hover/all:text-ink">
-                            All {c} in the shop
-                          </span>
-                        </motion.button>
+                            </motion.div>
+                          ))}
+
+                          <motion.button
+                            data-cursor
+                            onClick={() => navigate("/shop", { state: { cat: c } })}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.45, delay: 0.2 + rest.length * 0.06 }}
+                            className="w-full border-2 border-dashed border-ink/30 py-4 flex items-center justify-center gap-3 font-mono text-[10px] tracking-[0.26em] uppercase text-mist hover:border-gold hover:text-ink hover:bg-brass/10 transition-all duration-300 group/all"
+                          >
+                            Enter the {c} discipline — {items.length} objets
+                            <ArrowUpRight className="w-4 h-4 text-gold transition-transform duration-300 group-hover/all:translate-x-1 group-hover/all:-translate-y-1" />
+                          </motion.button>
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -669,6 +848,39 @@ function Disciplines() {
           })}
         </div>
       </div>
+
+      {/* cursor-following objet */}
+      {fine && !reduce && (
+        <div
+          ref={followerRef}
+          className="fixed top-0 left-0 z-40 pointer-events-none will-change-transform"
+          style={{ transform: "translate3d(-600px, -600px, 0)" }}
+          aria-hidden
+        >
+          <div className={`transition-all duration-300 ${activeCat ? "opacity-100 scale-100" : "opacity-0 scale-90"}`}>
+            <div className="relative w-52 md:w-60 aspect-[4/5] plate-dark border-2 border-ink shadow-[14px_14px_0_rgba(23,21,16,0.3)] p-6 overflow-hidden">
+              {activeCat && (
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={activeCat}
+                    src={PRODUCTS.find((p) => p.category === activeCat)?.img}
+                    alt=""
+                    initial={{ opacity: 0, scale: 0.85, rotate: -6 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    exit={{ opacity: 0, scale: 0.92 }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    className="blend-lighten absolute inset-5 object-contain"
+                  />
+                </AnimatePresence>
+              )}
+              <span className="absolute bottom-3 inset-x-4 flex items-center justify-between font-mono text-[9px] tracking-[0.24em] uppercase text-goldlight">
+                {activeCat ?? ""}
+                <DiamondIcon className="w-2 h-2 text-brass" />
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1131,6 +1343,7 @@ export default function Home() {
       <StatsBand />
       <Voices />
       <PrivateList />
+      <AdTakeover />
     </motion.div>
   );
 }

@@ -164,37 +164,42 @@ body {
   transform-origin: left;
 }
 
-/* ---------- water / ripple ---------- */
+/* ---------- water ---------- */
 
-@keyframes ripple-ring-kf {
-  from { transform: translate(-50%, -50%) scale(0.1); opacity: 0.55; }
-  to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+@keyframes wave-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
-.ripple-ring {
+.animate-wave { animation: wave-x 4.2s linear infinite; }
+.animate-wave-fast { animation: wave-x 2.6s linear infinite; }
+.animate-wave-back { animation: wave-x 6.5s linear infinite reverse; }
+
+.water-rise {
   position: absolute;
-  width: 300px;
-  height: 300px;
-  border-radius: 9999px;
-  border: 1.5px solid rgba(151, 114, 29, 0.5);
+  inset-inline: 0;
+  bottom: 0;
+  height: 0;
+  overflow: visible;
   pointer-events: none;
-  animation: ripple-ring-kf 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transition: height 0.9s cubic-bezier(0.65, 0, 0.35, 1);
 }
-.ripple-ring.inner {
-  width: 160px;
-  height: 160px;
-  border-color: rgba(201, 162, 75, 0.6);
-  animation-duration: 0.75s;
+.group:hover .water-rise,
+.water-open .water-rise {
+  height: 100%;
 }
-.water-blob {
+
+@keyframes bubble-rise {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  18% { opacity: 0.8; }
+  100% { transform: translateY(-64px) scale(1); opacity: 0; }
+}
+.bubble {
   position: absolute;
-  width: 440px;
-  height: 440px;
   border-radius: 9999px;
-  background: radial-gradient(circle, rgba(201, 162, 75, 0.16) 0%, rgba(201, 162, 75, 0.05) 45%, transparent 70%);
-  filter: blur(30px);
-  pointer-events: none;
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  transform: translate(-50%, -50%);
+  border: 1px solid rgba(242, 239, 231, 0.75);
+  background: rgba(242, 239, 231, 0.35);
+  opacity: 0;
+  animation: bubble-rise 3.2s ease-in infinite;
 }
 
 /* ---------- coupon ticket ---------- */
@@ -238,12 +243,15 @@ body {
   .animate-badge-pop,
   .animate-kenburns,
   .animate-deal-pulse,
-  .ripple-ring,
+  .animate-wave,
+  .animate-wave-fast,
+  .animate-wave-back,
+  .bubble,
   .gold-shimmer {
     animation: none !important;
   }
-  .ripple-ring { display: none; }
-  .water-blob { display: none; }
+  .bubble { display: none; }
+  .water-rise { transition: none; }
   .btn-sheen::after { display: none; }
   * { transition-duration: 0.01ms !important; }
 }

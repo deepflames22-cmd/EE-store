@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CATEGORIES, PRODUCTS, formatPrice, type Category, type Product } from "../data/products";
 import { ArrowUpRight, PlusIcon } from "../components/Icons";
 import { Reveal } from "../components/shared";
+import { ShopPeekAd } from "../components/ads";
 import { useCart } from "../store/CartContext";
 import { useInView } from "../hooks/useInView";
 
@@ -186,6 +187,7 @@ export default function Shop() {
           </div>
         </Reveal>
       </div>
+      <ShopPeekAd />
     </motion.div>
   );
 }

@@ -214,7 +214,7 @@ export function ShopPeekAd() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 380, opacity: 0 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed bottom-6 right-5 z-[84] w-[19rem] max-w-[calc(100vw-2.5rem)]"
+          className="fixed bottom-28 right-4 md:right-6 z-[82] w-[19rem] max-w-[calc(100vw-2.5rem)]"
           role="complementary"
           aria-label="Flash drop advertisement"
         >

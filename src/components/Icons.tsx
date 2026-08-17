@@ -230,6 +230,34 @@ export const SettingsIcon = ({ className = "w-5 h-5" }: P) => (
   </svg>
 );
 
+export const ChatIcon = ({ className = "w-5 h-5" }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
+    <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H12l-4.5 4v-4h-1A2.5 2.5 0 0 1 4 13.5v-7Z" strokeLinejoin="round" />
+    <path d="M8.5 9.5h7M8.5 12.5h4.5" strokeLinecap="round" />
+  </svg>
+);
+
+export const SendIcon = ({ className = "w-5 h-5" }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
+    <path d="M20.5 3.5 3.5 10.2l6.6 2.6 2.6 6.7 7.8-16Z" strokeLinejoin="round" />
+    <path d="m10.1 12.8 4.2-4.2" strokeLinecap="round" />
+  </svg>
+);
+
+export const KeyIcon = ({ className = "w-5 h-5" }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
+    <circle cx="8" cy="8.5" r="4.5" />
+    <path d="m11.3 11.8 8.2 8.2M17 17.5l2.2-2.2M14.2 14.7l2-2" strokeLinecap="round" />
+  </svg>
+);
+
+export const SparkIcon = ({ className = "w-5 h-5" }: P) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+    <path d="M12 2.5 14 9l6.5 2-6.5 2-2 6.5L10 13l-6.5-2L10 9l2-6.5Z" />
+    <path d="m19 15 .9 2.6L22.5 18.5l-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9L19 15Z" opacity="0.7" />
+  </svg>
+);
+
 export const TimerIcon = ({ className = "w-5 h-5" }: P) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
     <circle cx="12" cy="13.5" r="7.5" />

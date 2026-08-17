@@ -5,6 +5,7 @@ import { useCart } from "../store/CartContext";
 import { useAuth } from "../store/AuthContext";
 import Toasts from "./Toasts";
 import Cursor from "./Cursor";
+import ChatWidget from "./ChatWidget";
 import { PageVeil } from "./Loader";
 import { ArrowRight, ArrowUpRight, CartIcon, CloseIcon, LogoMark, UserIcon } from "./Icons";
 
@@ -332,6 +333,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {!isConsole && <Nav />}
       <main>{children}</main>
       {!isConsole && <Footer />}
+      {!isConsole && <ChatWidget />}
       <Toasts toasts={toasts} />
     </div>
   );

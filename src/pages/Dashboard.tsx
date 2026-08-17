@@ -25,15 +25,27 @@ import {
   saveDash,
 } from "../store/dashboard";
 import { getSettings, saveCustomPromos, getCustomPromos, saveSettings, type DashSettings } from "../store/coupons";
+import {
+  OPENROUTER_MODELS,
+  getApiKey,
+  getModel,
+  saveApiKey,
+  saveModel,
+  testKey,
+} from "../store/openrouter";
 import { useCart } from "../store/CartContext";
 import {
   ArrowUpRight,
   BellIcon,
   BoltIcon,
   CartIcon,
+  ChatIcon,
   CheckIcon,
   CloseIcon,
   DiamondIcon,
+  EyeIcon,
+  EyeOffIcon,
+  KeyIcon,
   LogoMark,
   MinusIcon,
   PackageIcon,
@@ -43,6 +55,143 @@ import {
   TagIcon,
   UserIcon,
 } from "../components/Icons";
+
+function OpenRouterCard() {
+  const [key, setKey] = useState(() => getApiKey());
+  const [model, setModel] = useState(() => getModel());
+  const [show, setShow] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const saved = Boolean(getApiKey());
+
+  const save = () => {
+    saveApiKey(key);
+    saveModel(model);
+    setResult({ ok: true, message: "Saved — the Concierge is listening on the storefront." });
+  };
+
+  const runTest = async () => {
+    if (!key.trim()) {
+      setResult({ ok: false, message: "Paste a key first — it starts with sk-or-." });
+      return;
+    }
+    setTesting(true);
+    setResult(null);
+    const r = await testKey(key);
+    setResult(r);
+    setTesting(false);
+  };
+
+  return (
+    <div className="border border-brass/35 bg-coal/70 p-6">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-display font-bold text-xl flex items-center gap-2.5">
+          <ChatIcon className="w-5 h-5 text-brass" /> Concierge AI · OpenRouter
+        </h3>
+        <span
+          className={`font-mono text-[9px] tracking-[0.2em] uppercase px-2.5 py-1.5 border ${
+            saved ? "text-[#9fc4ab] border-[#9fc4ab]/40" : "text-rust border-rust/50"
+          }`}
+        >
+          {saved ? "Connected" : "No key"}
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-paper/45 leading-relaxed">
+        One key powers the floating Concierge chat on the storefront. It answers from the
+        live catalog, codes and house policies — nothing else leaves the browser.
+      </p>
+
+      <div className="mt-5">
+        <label className="font-mono text-[9px] tracking-[0.24em] uppercase text-paper/45">OpenRouter API key</label>
+        <div className="mt-2 flex items-center border border-paper/15 bg-ink focus-within:border-brass transition-colors">
+          <KeyIcon className="w-4 h-4 ml-3.5 text-brass shrink-0" />
+          <input
+            type={show ? "text" : "password"}
+            value={key}
+            onChange={(e) => {
+              setKey(e.target.value);
+              setResult(null);
+            }}
+            placeholder="sk-or-v1-…"
+            className="flex-1 min-w-0 bg-transparent px-3 py-3 font-mono text-sm focus:outline-none placeholder:text-paper/25"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            data-cursor
+            onClick={() => setShow((s) => !s)}
+            className="px-3.5 text-paper/40 hover:text-brass transition-colors"
+            aria-label={show ? "Hide key" : "Show key"}
+          >
+            {show ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <label className="font-mono text-[9px] tracking-[0.24em] uppercase text-paper/45">Model</label>
+        <div className="mt-2 relative">
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="w-full appearance-none bg-ink border border-paper/15 px-4 py-3 pr-10 font-mono text-xs text-paper focus:outline-none focus:border-brass cursor-pointer transition-colors"
+          >
+            {OPENROUTER_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label} — {m.id}
+              </option>
+            ))}
+          </select>
+          <svg viewBox="0 0 12 8" className="absolute right-4 top-1/2 -translate-y-1/2 w-3 h-2 pointer-events-none text-brass" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="m1 1.5 5 5 5-5" strokeLinecap="round" />
+          </svg>
+        </div>
+      </div>
+
+      {result && (
+        <motion.p
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mt-4 border px-4 py-3 text-xs ${
+            result.ok
+              ? "border-[#9fc4ab]/45 text-[#9fc4ab] bg-[#9fc4ab]/5"
+              : "border-rust/50 text-[#d98a72] bg-rust/5"
+          }`}
+        >
+          {result.message}
+        </motion.p>
+      )}
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <button
+          data-cursor
+          onClick={save}
+          className="btn-sheen flex-1 bg-brass text-ink py-3 font-mono text-[10px] tracking-[0.22em] uppercase font-medium hover:bg-goldlight transition-colors flex items-center justify-center gap-2.5"
+        >
+          <CheckIcon className="w-4 h-4" /> Save key
+        </button>
+        <button
+          data-cursor
+          onClick={runTest}
+          disabled={testing}
+          className="border border-paper/25 px-5 py-3 font-mono text-[10px] tracking-[0.22em] uppercase text-paper/70 hover:border-brass hover:text-brass transition-all duration-300 disabled:opacity-50 flex items-center gap-2.5"
+        >
+          {testing ? (
+            <span className="w-3.5 h-3.5 border-2 border-brass/30 border-t-brass rounded-full animate-spin" />
+          ) : (
+            <BoltIcon className="w-3.5 h-3.5" />
+          )}
+          Test line
+        </button>
+      </div>
+      <p className="mt-3 text-[10px] text-paper/30 leading-relaxed">
+        Stored in this browser's ledger only. Create a key at openrouter.ai/keys — free
+        models work out of the box.
+      </p>
+    </div>
+  );
+}
 
 type Tab = "overview" | "orders" | "products" | "customers" | "promos" | "settings";
 
@@ -803,6 +952,7 @@ function SettingsTab({
             </li>
           </ul>
         </div>
+        <OpenRouterCard />
         <div className="border border-rust/40 bg-rust/5 p-6">
           <h3 className="font-display font-bold text-xl text-[#d98a72]">Danger zone</h3>
           <p className="mt-2 text-xs text-paper/45">

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { PRODUCTS, formatPrice, type Product } from "../data/products";
-import { ArrowRight, CartIcon, MinusIcon, PlusIcon, RotateIcon, ShieldIcon, StarIcon, TruckIcon } from "../components/Icons";
+import { formatPrice, type Product } from "../data/products";
+import { ArrowRight, CartIcon, DiamondIcon, MinusIcon, PlusIcon, RotateIcon, ShieldIcon, StarIcon, TruckIcon } from "../components/Icons";
 import { Reveal } from "../components/shared";
 import { useCart } from "../store/CartContext";
+import { useSite } from "../store/site";
 
 function Viewer({ product }: { product: Product }) {
   const [angle, setAngle] = useState(-16);
@@ -84,7 +85,8 @@ const BOX_ITEMS = ["The objet, serial-engraved", "Lacquered travel case", "Braid
 
 export default function ProductPage() {
   const { id } = useParams();
-  const product = PRODUCTS.find((p) => p.id === id);
+  const { products } = useSite();
+  const product = products.find((p) => p.id === id);
   const { add } = useCart();
   const [qty, setQty] = useState(1);
 
@@ -92,8 +94,12 @@ export default function ProductPage() {
 
   if (!product) return <Navigate to="/shop" replace />;
 
-  const related = [...PRODUCTS.filter((p) => p.id !== product.id)]
-    .sort((a, b) => Number(b.category === product.category) - Number(a.category === product.category))
+  const related = [...products.filter((p) => p.id !== product.id)]
+    .sort(
+      (a, b) =>
+        Number(b.category === product.category) - Number(a.category === product.category) ||
+        Number(b.brand === product.brand) - Number(a.brand === product.brand)
+    )
     .slice(0, 3);
 
   return (
@@ -112,7 +118,7 @@ export default function ProductPage() {
             <span className="text-brass">/</span>
             <Link to="/shop" className="hover:text-gold transition-colors">Shop</Link>
             <span className="text-brass">/</span>
-            <Link to="/shop" state={{ cat: product.category }} className="hover:text-gold transition-colors">{product.category}</Link>
+            <Link to={`/category/${encodeURIComponent(product.category)}`} className="hover:text-gold transition-colors">{product.category}</Link>
             <span className="text-brass">/</span>
             <span className="text-ink">{product.name}</span>
           </div>
@@ -129,6 +135,13 @@ export default function ProductPage() {
                 {product.tag && (
                   <span className="bg-brass text-ink font-mono text-[9px] tracking-[0.2em] uppercase px-2.5 py-1 font-medium">{product.tag}</span>
                 )}
+                <Link
+                  to={`/brand/${encodeURIComponent(product.brand)}`}
+                  data-cursor
+                  className="border border-gold/50 text-gold font-mono text-[9px] tracking-[0.2em] uppercase px-2.5 py-1 hover:bg-brass hover:text-ink hover:border-brass transition-all duration-300"
+                >
+                  {product.brand}
+                </Link>
                 <span className="font-mono text-[10px] tracking-[0.26em] uppercase text-gold">Run 07 — {product.category}</span>
               </div>
               <h1 className="mt-4 font-display font-extrabold tracking-tight leading-[0.92] text-5xl md:text-7xl">

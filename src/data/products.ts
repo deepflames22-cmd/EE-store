@@ -1,6 +1,7 @@
 export type Product = {
   id: string;
   name: string;
+  brand: string;
   category: Category;
   price: number;
   was?: number;
@@ -85,11 +86,11 @@ export function promoDiscount(subtotal: number, promo: Promo | null): number {
   return Math.min(promo.value, subtotal);
 }
 
-export type Category = "Audio" | "Wearables" | "Imaging" | "Desk";
+export type Category = string;
 
 export const CATEGORIES: Category[] = ["Audio", "Wearables", "Imaging", "Desk"];
 
-const IMG = {
+export const IMG = {
   headphones:
     "https://image.qwenlm.ai/generated-images/732616d9-4c04-40d9-a5e2-5106e049d87c/_result.png",
   watch: "https://image.qwenlm.ai/generated-images/1996bebb-d9a5-498f-ad49-3d44a5547442/_result.png",
@@ -111,6 +112,7 @@ export const PRODUCTS: Product[] = [
   {
     id: "aurion-one",
     name: "Aurion One",
+    brand: "Aurion",
     category: "Audio",
     price: 549,
     was: 649,
@@ -122,6 +124,7 @@ export const PRODUCTS: Product[] = [
   {
     id: "meridian-s",
     name: "Meridian S",
+    brand: "Aurion",
     category: "Wearables",
     price: 799,
     was: 899,
@@ -133,6 +136,7 @@ export const PRODUCTS: Product[] = [
   {
     id: "halo-buds",
     name: "Halo Buds Pro",
+    brand: "Or & Fer",
     category: "Audio",
     price: 299,
     blurb: "True wireless earbuds in a gold-leafed case that charges in eleven minutes.",
@@ -142,6 +146,7 @@ export const PRODUCTS: Product[] = [
   {
     id: "obelisk",
     name: "Obelisk",
+    brand: "Aurion",
     category: "Audio",
     price: 449,
     tag: "Best Seller",
@@ -152,6 +157,7 @@ export const PRODUCTS: Product[] = [
   {
     id: "lumen-q",
     name: "Lumen Q",
+    brand: "Kinetiq",
     category: "Imaging",
     price: 1199,
     blurb: "A pocket camera with a fixed 35mm-equivalent prime and a gold-anodised top plate.",
@@ -161,6 +167,7 @@ export const PRODUCTS: Product[] = [
   {
     id: "sovereign-kb",
     name: "Sovereign",
+    brand: "Or & Fer",
     category: "Desk",
     price: 349,
     tag: "Limited",
@@ -171,6 +178,7 @@ export const PRODUCTS: Product[] = [
   {
     id: "falcon-x",
     name: "Falcon X",
+    brand: "Kinetiq",
     category: "Imaging",
     price: 1499,
     was: 1699,

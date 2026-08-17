@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { CATEGORIES, formatPrice, type Category, type Product } from "../data/products";
-import { useSite, type SiteConfig } from "../store/site";
+import { formatPrice, type Product } from "../data/products";
+import { useSite, type BrandMeta, type CategoryMeta, type SiteConfig } from "../store/site";
 import { useCart } from "../store/CartContext";
-import { CheckIcon, CloseIcon, PlusIcon } from "../components/Icons";
+import ImageUpload from "../components/ImageUpload";
+import { CheckIcon, CloseIcon, EyeIcon, PlusIcon, SearchIcon } from "../components/Icons";
 
 /* ---------------- primitives ---------------- */
 
@@ -369,13 +370,41 @@ export function HomepageTab() {
             <div><Label>Sub-copy</Label><AreaInput value={pl.sub} onChange={(v) => setPl((p) => ({ ...p, sub: v }))} /></div>
             <div><Label>Members line</Label><TextInput value={pl.members} onChange={(v) => setPl((p) => ({ ...p, members: v }))} /></div>
           </Panel>
-          <Panel title="Discipline shelves" note="Copy shown inside each collapsible discipline.">
-            {CATEGORIES.map((c) => (
-              <div key={c} className="border border-paper/10 p-3 space-y-2">
-                <div className="font-mono text-[9px] tracking-[0.24em] uppercase text-brass">{c}</div>
-                <AreaInput value={disc[c]?.blurb ?? ""} rows={2} onChange={(v) => setDisc((dd) => ({ ...dd, [c]: { ...dd[c], blurb: v } }))} />
-                <input value={disc[c]?.note ?? ""} onChange={(e) => setDisc((dd) => ({ ...dd, [c]: { ...dd[c], note: e.target.value } }))} className={inputCls} placeholder="House note" />
-                <StrListEditor items={disc[c]?.feats ?? []} onChange={(v) => setDisc((dd) => ({ ...dd, [c]: { ...dd[c], feats: v } }))} placeholder="Feature chip…" />
+          <Panel title="Discipline shelves" note="Copy shown inside each collapsible discipline. Manage the disciplines themselves under Categories.">
+            {site.categories.map((cm) => (
+              <div key={cm.name} className="border border-paper/10 p-3 space-y-2">
+                <div className="font-mono text-[9px] tracking-[0.24em] uppercase text-brass">{cm.name}</div>
+                <AreaInput
+                  value={disc[cm.name]?.blurb ?? ""}
+                  rows={2}
+                  onChange={(v) =>
+                    setDisc((dd) => ({
+                      ...dd,
+                      [cm.name]: { blurb: v, note: dd[cm.name]?.note ?? "", feats: dd[cm.name]?.feats ?? [] },
+                    }))
+                  }
+                />
+                <input
+                  value={disc[cm.name]?.note ?? ""}
+                  onChange={(e) =>
+                    setDisc((dd) => ({
+                      ...dd,
+                      [cm.name]: { blurb: dd[cm.name]?.blurb ?? "", note: e.target.value, feats: dd[cm.name]?.feats ?? [] },
+                    }))
+                  }
+                  className={inputCls}
+                  placeholder="House note"
+                />
+                <StrListEditor
+                  items={disc[cm.name]?.feats ?? []}
+                  onChange={(v) =>
+                    setDisc((dd) => ({
+                      ...dd,
+                      [cm.name]: { blurb: dd[cm.name]?.blurb ?? "", note: dd[cm.name]?.note ?? "", feats: v },
+                    }))
+                  }
+                  placeholder="Feature chip…"
+                />
               </div>
             ))}
           </Panel>
@@ -388,87 +417,280 @@ export function HomepageTab() {
 
 /* ---------------- Catalog tab ---------------- */
 
-export function CatalogTab() {
-  const { site, products, saveSite } = useSite();
-  const { pushToast } = useCart();
-  const [editing, setEditing] = useState<Product | null>(null);
+const EMPTY_PRODUCT = (): Product => ({
+  id: "",
+  name: "",
+  brand: "Aurion",
+  category: "Audio",
+  price: 299,
+  was: 0,
+  tag: "",
+  blurb: "",
+  specs: [],
+  img: "",
+});
 
-  const saveProduct = (p: Product) => {
-    const { id, ...rest } = p;
-    saveSite({ ...site, productOverrides: { ...site.productOverrides, [id]: rest } });
-    pushToast("Catalog updated", `${p.name} is live on the storefront.`);
-    setEditing(null);
+export function CatalogTab() {
+  const { site, products, saveCatalog } = useSite();
+  const { pushToast } = useCart();
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [isNew, setIsNew] = useState(false);
+  const [viewing, setViewing] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState<Product | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const list = products.filter((p) =>
+    `${p.name} ${p.brand} ${p.category} ${p.tag ?? ""}`.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
+  const startNew = () => {
+    const d = EMPTY_PRODUCT();
+    if (site.brands.length) d.brand = site.brands[0].name;
+    if (site.categories.length) d.category = site.categories[0].name;
+    setEditing(d);
+    setIsNew(true);
+    setErr(null);
   };
 
-  const resetProduct = (id: string, name: string) => {
-    const next = { ...site.productOverrides };
-    delete next[id];
-    saveSite({ ...site, productOverrides: next });
-    pushToast("Reset to default", `${name} restored.`);
+  const saveProduct = (p: Product) => {
+    if (p.name.trim().length < 2) {
+      setErr("The objet needs a name (two characters or more).");
+      return;
+    }
+    if (!(p.price > 0)) {
+      setErr("Price must be above zero.");
+      return;
+    }
+    if (!p.img.trim()) {
+      setErr("Upload or link a plate image — every objet needs one.");
+      return;
+    }
+    const clean: Product = {
+      ...p,
+      name: p.name.trim(),
+      tag: p.tag?.trim() || undefined,
+      was: p.was && p.was > p.price ? p.was : undefined,
+      specs: p.specs.filter(Boolean),
+    };
+    if (isNew) {
+      const id =
+        p.id.trim() ||
+        `${clean.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "objet"}-${Date.now().toString(36)}`;
+      if (products.some((x) => x.id === id)) {
+        setErr("That id already exists in the register.");
+        return;
+      }
+      saveCatalog([...products, { ...clean, id }]);
+      pushToast("Objet sealed", `${clean.name} joined the register.`);
+    } else {
+      saveCatalog(products.map((x) => (x.id === clean.id ? clean : x)));
+      pushToast("Catalog updated", `${clean.name} is live on the storefront.`);
+    }
+    setEditing(null);
+    setIsNew(false);
+    setErr(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleting) return;
+    saveCatalog(products.filter((x) => x.id !== deleting.id));
+    pushToast("Objet retired", `${deleting.name} left the register.`);
+    setDeleting(null);
+    if (viewing?.id === deleting.id) setViewing(null);
   };
 
   return (
     <div className="space-y-4">
-      <Panel title="Product catalog" note="Edit any field — the storefront, shop, product pages, ads and the AI concierge all read these live.">
+      <Panel
+        title="Product catalog"
+        note="Create, edit, view and retire objets — the storefront, shop, filters, ads and the AI concierge all read this live."
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[220px] flex items-center gap-3 bg-ink border border-paper/15 focus-within:border-brass px-3.5 transition-colors">
+            <SearchIcon className="w-4 h-4 text-brass shrink-0" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search the register…"
+              className="w-full bg-transparent py-2.5 text-sm text-paper focus:outline-none placeholder:text-paper/30"
+            />
+          </div>
+          <button
+            data-cursor
+            onClick={startNew}
+            className="btn-sheen bg-brass text-ink px-5 py-2.5 font-mono text-[9px] tracking-[0.22em] uppercase font-medium hover:bg-goldlight transition-colors flex items-center gap-2"
+          >
+            <PlusIcon className="w-3.5 h-3.5" /> New objet
+          </button>
+        </div>
+
         <div className="space-y-2">
-          {products.map((p) => {
-            const overridden = Boolean(site.productOverrides[p.id]);
-            return (
-              <div key={p.id} className="flex flex-wrap items-center gap-4 border border-paper/10 px-4 py-3">
-                <span className="w-12 h-12 plate-dark border border-paper/15 p-1 shrink-0">
-                  <img src={p.img} alt="" className="blend-lighten w-full h-full object-contain" />
-                </span>
-                <div className="flex-1 min-w-[180px]">
-                  <div className="flex items-center gap-2">
-                    <span className="font-display font-bold text-paper">{p.name}</span>
-                    {overridden && <span className="font-mono text-[8px] tracking-[0.2em] uppercase text-brass border border-brass/50 px-1.5 py-0.5">edited</span>}
-                  </div>
-                  <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-paper/40">{p.category} · {formatPrice(p.price)}{p.was ? ` · was ${formatPrice(p.was)}` : ""}</div>
+          {list.length === 0 && (
+            <p className="text-xs text-paper/40 py-6 text-center">No objets match “{search}”.</p>
+          )}
+          {list.map((p) => (
+            <div key={p.id} className="flex flex-wrap items-center gap-4 border border-paper/10 px-4 py-3 hover:border-brass/40 transition-colors">
+              <span className="w-12 h-12 plate-dark border border-paper/15 p-1 shrink-0">
+                <img src={p.img} alt="" className="blend-lighten w-full h-full object-contain" />
+              </span>
+              <div className="flex-1 min-w-[180px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-display font-bold text-paper">{p.name}</span>
+                  {p.tag && <span className="font-mono text-[8px] tracking-[0.2em] uppercase text-brass border border-brass/50 px-1.5 py-0.5">{p.tag}</span>}
+                  {p.was && <span className="font-mono text-[8px] tracking-[0.2em] uppercase text-[#d98a72] border border-[#d98a72]/50 px-1.5 py-0.5">deal</span>}
                 </div>
-                <div className="flex gap-2">
-                  <button data-cursor onClick={() => setEditing(p)} className="border border-paper/25 px-4 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/70 hover:bg-brass hover:text-ink hover:border-brass transition-all">Edit</button>
-                  {overridden && (
-                    <button data-cursor onClick={() => resetProduct(p.id, p.name)} className="border border-paper/15 px-4 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/40 hover:text-[#d98a72] hover:border-[#d98a72] transition-colors">Reset</button>
-                  )}
+                <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-paper/40">
+                  {p.brand} · {p.category} · {formatPrice(p.price)}{p.was ? ` (was ${formatPrice(p.was)})` : ""}
                 </div>
               </div>
-            );
-          })}
+              <div className="flex gap-2">
+                <button
+                  data-cursor
+                  onClick={() => setViewing(p)}
+                  className="border border-paper/25 px-3.5 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/70 hover:text-brass hover:border-brass transition-all flex items-center gap-1.5"
+                >
+                  <EyeIcon className="w-3.5 h-3.5" /> View
+                </button>
+                <button
+                  data-cursor
+                  onClick={() => {
+                    setEditing(p);
+                    setIsNew(false);
+                    setErr(null);
+                  }}
+                  className="border border-paper/25 px-3.5 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/70 hover:bg-brass hover:text-ink hover:border-brass transition-all"
+                >
+                  Edit
+                </button>
+                <button
+                  data-cursor
+                  onClick={() => setDeleting(p)}
+                  className="border border-paper/15 px-3.5 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/40 hover:text-[#d98a72] hover:border-[#d98a72] transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </Panel>
+
+      {/* view modal */}
+      {viewing && (
+        <div className="fixed inset-0 z-[92] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={() => setViewing(null)} />
+          <div className="relative w-full max-w-xl max-h-[86vh] overflow-y-auto border-2 border-brass bg-coal p-7">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-bold text-2xl text-paper">{viewing.name}</h3>
+              <button data-cursor onClick={() => setViewing(null)} className="text-paper/50 hover:text-brass transition-colors" aria-label="Close">
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="mt-5 grid sm:grid-cols-[180px_1fr] gap-6">
+              <span className="plate-dark border border-paper/15 p-4 h-44">
+                <img src={viewing.img} alt={viewing.name} className="blend-lighten w-full h-full object-contain" />
+              </span>
+              <div className="space-y-2.5 text-sm">
+                <div className="flex justify-between border-b border-paper/10 pb-2"><span className="text-paper/40 font-mono text-[9px] tracking-[0.2em] uppercase">Id</span><span className="font-mono text-paper/80">{viewing.id}</span></div>
+                <div className="flex justify-between border-b border-paper/10 pb-2"><span className="text-paper/40 font-mono text-[9px] tracking-[0.2em] uppercase">Brand</span><span className="text-paper/80">{viewing.brand}</span></div>
+                <div className="flex justify-between border-b border-paper/10 pb-2"><span className="text-paper/40 font-mono text-[9px] tracking-[0.2em] uppercase">Category</span><span className="text-paper/80">{viewing.category}</span></div>
+                <div className="flex justify-between border-b border-paper/10 pb-2"><span className="text-paper/40 font-mono text-[9px] tracking-[0.2em] uppercase">Price</span><span className="text-paper/80 tabular-nums">{formatPrice(viewing.price)}{viewing.was ? ` · was ${formatPrice(viewing.was)}` : ""}</span></div>
+                <div className="flex justify-between border-b border-paper/10 pb-2"><span className="text-paper/40 font-mono text-[9px] tracking-[0.2em] uppercase">Tag</span><span className="text-paper/80">{viewing.tag ?? "—"}</span></div>
+                <p className="text-paper/60 leading-relaxed pt-1">{viewing.blurb}</p>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {viewing.specs.map((s) => (
+                    <span key={s} className="font-mono text-[9px] tracking-[0.14em] uppercase text-brass border border-brass/40 px-2 py-1">{s}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                data-cursor
+                onClick={() => {
+                  setEditing(viewing);
+                  setIsNew(false);
+                  setErr(null);
+                  setViewing(null);
+                }}
+                className="btn-sheen flex-1 bg-brass text-ink py-3 font-mono text-[10px] tracking-[0.24em] uppercase font-medium hover:bg-goldlight transition-colors"
+              >
+                Edit this objet
+              </button>
+              <button data-cursor onClick={() => setViewing(null)} className="border border-paper/25 px-6 font-mono text-[10px] tracking-[0.24em] uppercase text-paper/60 hover:text-paper transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* delete confirm */}
+      {deleting && (
+        <div className="fixed inset-0 z-[93] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={() => setDeleting(null)} />
+          <div className="relative w-full max-w-md border-2 border-[#d98a72] bg-coal p-7">
+            <h3 className="font-display font-bold text-xl text-paper">Retire {deleting.name}?</h3>
+            <p className="mt-2 text-xs text-paper/50 leading-relaxed">
+              The objet leaves the register, the shop and every shelf immediately. Past orders keep their receipts.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button data-cursor onClick={confirmDelete} className="flex-1 bg-rust text-paper py-3 font-mono text-[10px] tracking-[0.24em] uppercase hover:opacity-85 transition-opacity">
+                Yes, retire it
+              </button>
+              <button data-cursor onClick={() => setDeleting(null)} className="border border-paper/25 px-6 font-mono text-[10px] tracking-[0.24em] uppercase text-paper/60 hover:text-paper transition-colors">
+                Keep
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <div className="fixed inset-0 z-[92] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={() => setEditing(null)} />
-          <div className="relative w-full max-w-2xl max-h-[86vh] overflow-y-auto border-2 border-brass bg-coal p-7">
+          <div className="relative w-full max-w-2xl max-h-[88vh] overflow-y-auto border-2 border-brass bg-coal p-7">
             <div className="flex items-center justify-between">
-              <h3 className="font-display font-bold text-2xl text-paper">Edit — {editing.name}</h3>
-              <button data-cursor onClick={() => setEditing(null)} className="text-paper/50 hover:text-brass transition-colors" aria-label="Close editor"><CloseIcon /></button>
+              <h3 className="font-display font-bold text-2xl text-paper">
+                {isNew ? "Seal a new objet" : `Edit — ${editing.name}`}
+              </h3>
+              <button data-cursor onClick={() => setEditing(null)} className="text-paper/50 hover:text-brass transition-colors" aria-label="Close editor">
+                <CloseIcon />
+              </button>
             </div>
             <div className="mt-6 grid sm:grid-cols-2 gap-4">
-              <div><Label>Name</Label><TextInput value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} /></div>
+              <div><Label>Name</Label><TextInput value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} placeholder="Aurion Two" /></div>
+              {isNew && (
+                <div><Label>Id (blank = auto)</Label><TextInput value={editing.id} onChange={(v) => setEditing({ ...editing, id: v.toLowerCase().replace(/\s+/g, "-") })} placeholder="aurion-two" /></div>
+              )}
+              <div><Label>Brand</Label>
+                <select value={editing.brand} onChange={(e) => setEditing({ ...editing, brand: e.target.value })} className={inputCls}>
+                  {site.brands.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
+                </select>
+              </div>
               <div><Label>Category</Label>
-                <select value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value as Category })} className={inputCls}>
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                <select value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className={inputCls}>
+                  {site.categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
               <div><Label>Price (USD)</Label><NumInput value={editing.price} step={10} onChange={(v) => setEditing({ ...editing, price: v })} /></div>
               <div><Label>Was price (0 = no deal)</Label><NumInput value={editing.was ?? 0} step={10} onChange={(v) => setEditing({ ...editing, was: v > 0 ? v : undefined })} /></div>
-              <div><Label>Tag badge (blank = none)</Label><TextInput value={editing.tag ?? ""} onChange={(v) => setEditing({ ...editing, tag: v || undefined })} /></div>
-              <div><Label>Image URL</Label><TextInput value={editing.img} onChange={(v) => setEditing({ ...editing, img: v })} /></div>
+              <div className="sm:col-span-2"><Label>Tag badge (blank = none)</Label><TextInput value={editing.tag ?? ""} onChange={(v) => setEditing({ ...editing, tag: v || undefined })} placeholder="Signature · New · Limited…" /></div>
               <div className="sm:col-span-2"><Label>Blurb</Label><AreaInput value={editing.blurb} onChange={(v) => setEditing({ ...editing, blurb: v })} /></div>
               <div className="sm:col-span-2"><Label>Specs (one per line)</Label>
                 <AreaInput value={editing.specs.join("\n")} rows={3} onChange={(v) => setEditing({ ...editing, specs: v.split("\n").filter(Boolean) })} />
               </div>
+              <div className="sm:col-span-2">
+                <ImageUpload value={editing.img} onChange={(v) => setEditing({ ...editing, img: v })} label="Plate image" />
+              </div>
+              <div className="sm:col-span-2"><Label>…or paste an image URL</Label><TextInput value={editing.img.startsWith("data:") ? "" : editing.img} onChange={(v) => setEditing({ ...editing, img: v })} placeholder="https://…" /></div>
             </div>
-            <div className="mt-5 flex items-center gap-4">
-              <span className="w-20 h-20 plate-dark border border-paper/15 p-1.5 shrink-0">
-                <img src={editing.img} alt="" className="blend-lighten w-full h-full object-contain" />
-              </span>
-              <p className="text-xs text-paper/40">Live preview of the plate image. Transparent black-background shots blend best.</p>
-            </div>
+            {err && <p className="mt-4 font-mono text-[10px] tracking-[0.18em] uppercase text-[#d98a72]">{err}</p>}
             <div className="mt-6 flex gap-3">
-              <button data-cursor onClick={() => saveProduct(editing)} className="btn-sheen flex-1 bg-brass text-ink py-3.5 font-mono text-[10px] tracking-[0.24em] uppercase font-medium hover:bg-goldlight transition-colors">Save product</button>
+              <button data-cursor onClick={() => saveProduct(editing)} className="btn-sheen flex-1 bg-brass text-ink py-3.5 font-mono text-[10px] tracking-[0.24em] uppercase font-medium hover:bg-goldlight transition-colors">
+                {isNew ? "Seal into the register" : "Save product"}
+              </button>
               <button data-cursor onClick={() => setEditing(null)} className="border border-paper/25 px-6 font-mono text-[10px] tracking-[0.24em] uppercase text-paper/60 hover:text-paper transition-colors">Cancel</button>
             </div>
           </div>
@@ -541,6 +763,360 @@ export function ShippingTab() {
       </div>
     </div>
   );
+}
+
+/* ---------------- Brands tab ---------------- */
+
+const EMPTY_BRAND = (): BrandMeta => ({
+  id: "",
+  name: "",
+  tagline: "",
+  est: "MMXXIV",
+  story: "",
+  image: "",
+});
+
+export function BrandsTab() {
+  const { site, patchSite, products } = useSite();
+  const { pushToast } = useCart();
+  const [editing, setEditing] = useState<BrandMeta | null>(null);
+  const [isNew, setIsNew] = useState(false);
+  const [deleting, setDeleting] = useState<BrandMeta | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const countFor = (name: string) => products.filter((p) => p.brand === name).length;
+
+  const save = () => {
+    if (!editing) return;
+    if (editing.name.trim().length < 2) {
+      setErr("The label needs a name (two characters or more).");
+      return;
+    }
+    const clean: BrandMeta = { ...editing, name: editing.name.trim() };
+    if (isNew) {
+      const id =
+        clean.id.trim() ||
+        clean.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") ||
+        `brand-${Date.now().toString(36)}`;
+      if (site.brands.some((b) => b.id === id || b.name.toLowerCase() === clean.name.toLowerCase())) {
+        setErr("A label with that name already exists.");
+        return;
+      }
+      patchSite({ brands: [...site.brands, { ...clean, id }] });
+      pushToast("Label founded", `${clean.name} joined the maison.`);
+    } else {
+      patchSite({ brands: site.brands.map((b) => (b.id === clean.id ? clean : b)) });
+      pushToast("Label updated", `${clean.name} is live.`);
+    }
+    setEditing(null);
+    setIsNew(false);
+    setErr(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleting) return;
+    patchSite({ brands: site.brands.filter((b) => b.id !== deleting.id) });
+    pushToast("Label dissolved", `${deleting.name} removed. Its objets keep their names.`);
+    setDeleting(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Panel
+        title="Brand labels"
+        note="The maisons under the house. Shown on the brand pages, the shop filters and every product card."
+      >
+        <div className="flex justify-end">
+          <button
+            data-cursor
+            onClick={() => {
+              setEditing(EMPTY_BRAND());
+              setIsNew(true);
+              setErr(null);
+            }}
+            className="btn-sheen bg-brass text-ink px-5 py-2.5 font-mono text-[9px] tracking-[0.22em] uppercase font-medium hover:bg-goldlight transition-colors flex items-center gap-2"
+          >
+            <PlusIcon className="w-3.5 h-3.5" /> Found a label
+          </button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3">
+          {site.brands.map((b) => (
+            <div key={b.id} className="border border-paper/10 p-4 hover:border-brass/40 transition-colors">
+              <div className="flex items-center gap-4">
+                <span className="w-16 h-16 plate-dark border border-paper/15 p-1.5 shrink-0">
+                  <img src={b.image} alt="" className="blend-lighten w-full h-full object-contain" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-bold text-paper text-lg truncate">{b.name}</div>
+                  <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-paper/40 truncate">
+                    {b.tagline || "—"} · Est. {b.est}
+                  </div>
+                  <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-brass mt-1">
+                    {countFor(b.name)} objets
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button
+                  data-cursor
+                  onClick={() => {
+                    setEditing(b);
+                    setIsNew(false);
+                    setErr(null);
+                  }}
+                  className="flex-1 border border-paper/25 px-4 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/70 hover:bg-brass hover:text-ink hover:border-brass transition-all"
+                >
+                  Edit
+                </button>
+                <button
+                  data-cursor
+                  onClick={() => setDeleting(b)}
+                  disabled={countFor(b.name) > 0}
+                  className="border border-paper/15 px-4 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/40 hover:text-[#d98a72] hover:border-[#d98a72] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  title={countFor(b.name) > 0 ? "Reassign its objets first" : undefined}
+                >
+                  Dissolve
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {editing && (
+        <div className="fixed inset-0 z-[92] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={() => setEditing(null)} />
+          <div className="relative w-full max-w-lg max-h-[88vh] overflow-y-auto border-2 border-brass bg-coal p-7">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-bold text-2xl text-paper">{isNew ? "Found a label" : `Edit — ${editing.name}`}</h3>
+              <button data-cursor onClick={() => setEditing(null)} className="text-paper/50 hover:text-brass transition-colors" aria-label="Close">
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="mt-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Name</Label><TextInput value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} placeholder="Or & Fer" /></div>
+                <div><Label>Established</Label><TextInput value={editing.est} onChange={(v) => setEditing({ ...editing, est: v })} placeholder="MMXXIV" /></div>
+              </div>
+              <div><Label>Tagline</Label><TextInput value={editing.tagline} onChange={(v) => setEditing({ ...editing, tagline: v })} placeholder="Gold & iron — sound hardware" /></div>
+              <div><Label>Story</Label><AreaInput value={editing.story} rows={4} onChange={(v) => setEditing({ ...editing, story: v })} /></div>
+              <ImageUpload value={editing.image} onChange={(v) => setEditing({ ...editing, image: v })} label="Label image" />
+            </div>
+            {err && <p className="mt-4 font-mono text-[10px] tracking-[0.18em] uppercase text-[#d98a72]">{err}</p>}
+            <div className="mt-6 flex gap-3">
+              <button data-cursor onClick={save} className="btn-sheen flex-1 bg-brass text-ink py-3.5 font-mono text-[10px] tracking-[0.24em] uppercase font-medium hover:bg-goldlight transition-colors">
+                {isNew ? "Found the label" : "Save label"}
+              </button>
+              <button data-cursor onClick={() => setEditing(null)} className="border border-paper/25 px-6 font-mono text-[10px] tracking-[0.24em] uppercase text-paper/60 hover:text-paper transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-[93] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={() => setDeleting(null)} />
+          <div className="relative w-full max-w-md border-2 border-[#d98a72] bg-coal p-7">
+            <h3 className="font-display font-bold text-xl text-paper">Dissolve {deleting.name}?</h3>
+            <p className="mt-2 text-xs text-paper/50 leading-relaxed">
+              The label page disappears. Objets currently carrying it keep the name until you reassign them in the catalog.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button data-cursor onClick={confirmDelete} className="flex-1 bg-rust text-paper py-3 font-mono text-[10px] tracking-[0.24em] uppercase hover:opacity-85 transition-opacity">
+                Yes, dissolve
+              </button>
+              <button data-cursor onClick={() => setDeleting(null)} className="border border-paper/25 px-6 font-mono text-[10px] tracking-[0.24em] uppercase text-paper/60 hover:text-paper transition-colors">
+                Keep
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Categories tab ---------------- */
+
+const EMPTY_CATEGORY = (): CategoryMeta => ({ name: "", description: "", image: "" });
+
+export function CategoriesTab() {
+  const { site, patchSite, products } = useSite();
+  const { pushToast } = useCart();
+  const [editing, setEditing] = useState<CategoryMeta | null>(null);
+  const [originalName, setOriginalName] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<CategoryMeta | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const countFor = (name: string) => products.filter((p) => p.category === name).length;
+
+  const save = () => {
+    if (!editing) return;
+    const name = editing.name.trim();
+    if (name.length < 2) {
+      setErr("The discipline needs a name (two characters or more).");
+      return;
+    }
+    const isNew = originalName === null;
+    if (isNew && site.categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      setErr("A discipline with that name already exists.");
+      return;
+    }
+    if (isNew) {
+      patchSite({
+        categories: [...site.categories, { ...editing, name }],
+        disciplines: {
+          ...site.disciplines,
+          [name]: { blurb: editing.description, note: "", feats: [] },
+        },
+      });
+      pushToast("Discipline opened", `${name} now has a shelf and a page.`);
+    } else {
+      const disciplines = { ...site.disciplines };
+      const oldMeta = originalName ? disciplines[originalName] : undefined;
+      if (oldMeta) delete disciplines[oldMetaKey(disciplines, originalName)!];
+      disciplines[name] = { blurb: editing.description, note: oldMeta?.note ?? "", feats: oldMeta?.feats ?? [] };
+      patchSite({
+        categories: site.categories.map((c) => (c.name === originalName ? { ...editing, name } : c)),
+        disciplines,
+        catalog:
+          originalName && originalName !== name
+            ? site.catalog.map((p) => (p.category === originalName ? { ...p, category: name } : p))
+            : site.catalog,
+      });
+      pushToast("Discipline updated", `${name} is live across the storefront.`);
+    }
+    setEditing(null);
+    setOriginalName(null);
+    setErr(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleting) return;
+    const disciplines = { ...site.disciplines };
+    delete disciplines[oldMetaKey(disciplines, deleting.name)!];
+    patchSite({
+      categories: site.categories.filter((c) => c.name !== deleting.name),
+      disciplines,
+    });
+    pushToast("Discipline closed", `${deleting.name} removed. Its objets keep their shelf tag.`);
+    setDeleting(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Panel
+        title="Disciplines (categories)"
+        note="Each discipline gets a shop filter, a collapsible home shelf and its own page. Renaming moves every objet on the shelf."
+      >
+        <div className="flex justify-end">
+          <button
+            data-cursor
+            onClick={() => {
+              setEditing(EMPTY_CATEGORY());
+              setOriginalName(null);
+              setErr(null);
+            }}
+            className="btn-sheen bg-brass text-ink px-5 py-2.5 font-mono text-[9px] tracking-[0.22em] uppercase font-medium hover:bg-goldlight transition-colors flex items-center gap-2"
+          >
+            <PlusIcon className="w-3.5 h-3.5" /> Open a discipline
+          </button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3">
+          {site.categories.map((c) => (
+            <div key={c.name} className="border border-paper/10 p-4 hover:border-brass/40 transition-colors">
+              <div className="flex items-center gap-4">
+                <span className="w-16 h-16 plate-dark border border-paper/15 p-1.5 shrink-0">
+                  <img src={c.image} alt="" className="blend-lighten w-full h-full object-contain" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-bold text-paper text-lg truncate">{c.name}</div>
+                  <div className="text-xs text-paper/40 line-clamp-2 leading-relaxed">{c.description}</div>
+                  <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-brass mt-1.5">
+                    {countFor(c.name)} objets
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button
+                  data-cursor
+                  onClick={() => {
+                    setEditing(c);
+                    setOriginalName(c.name);
+                    setErr(null);
+                  }}
+                  className="flex-1 border border-paper/25 px-4 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/70 hover:bg-brass hover:text-ink hover:border-brass transition-all"
+                >
+                  Edit
+                </button>
+                <button
+                  data-cursor
+                  onClick={() => setDeleting(c)}
+                  disabled={countFor(c.name) > 0}
+                  className="border border-paper/15 px-4 py-2 font-mono text-[9px] tracking-[0.2em] uppercase text-paper/40 hover:text-[#d98a72] hover:border-[#d98a72] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  title={countFor(c.name) > 0 ? "Move its objets first" : undefined}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {editing && (
+        <div className="fixed inset-0 z-[92] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={() => setEditing(null)} />
+          <div className="relative w-full max-w-lg max-h-[88vh] overflow-y-auto border-2 border-brass bg-coal p-7">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-bold text-2xl text-paper">
+                {originalName === null ? "Open a discipline" : `Edit — ${originalName}`}
+              </h3>
+              <button data-cursor onClick={() => setEditing(null)} className="text-paper/50 hover:text-brass transition-colors" aria-label="Close">
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="mt-6 space-y-4">
+              <div><Label>Name</Label><TextInput value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} placeholder="Audio" /></div>
+              <div><Label>Description</Label><AreaInput value={editing.description} rows={4} onChange={(v) => setEditing({ ...editing, description: v })} /></div>
+              <ImageUpload value={editing.image} onChange={(v) => setEditing({ ...editing, image: v })} label="Shelf image" />
+            </div>
+            {err && <p className="mt-4 font-mono text-[10px] tracking-[0.18em] uppercase text-[#d98a72]">{err}</p>}
+            <div className="mt-6 flex gap-3">
+              <button data-cursor onClick={save} className="btn-sheen flex-1 bg-brass text-ink py-3.5 font-mono text-[10px] tracking-[0.24em] uppercase font-medium hover:bg-goldlight transition-colors">
+                {originalName === null ? "Open the discipline" : "Save discipline"}
+              </button>
+              <button data-cursor onClick={() => setEditing(null)} className="border border-paper/25 px-6 font-mono text-[10px] tracking-[0.24em] uppercase text-paper/60 hover:text-paper transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-[93] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/80 backdrop-blur-sm" onClick={() => setDeleting(null)} />
+          <div className="relative w-full max-w-md border-2 border-[#d98a72] bg-coal p-7">
+            <h3 className="font-display font-bold text-xl text-paper">Close {deleting.name}?</h3>
+            <p className="mt-2 text-xs text-paper/50 leading-relaxed">
+              The shelf and the page disappear from the storefront. You can only close empty disciplines.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button data-cursor onClick={confirmDelete} className="flex-1 bg-rust text-paper py-3 font-mono text-[10px] tracking-[0.24em] uppercase hover:opacity-85 transition-opacity">
+                Yes, close it
+              </button>
+              <button data-cursor onClick={() => setDeleting(null)} className="border border-paper/25 px-6 font-mono text-[10px] tracking-[0.24em] uppercase text-paper/60 hover:text-paper transition-colors">
+                Keep
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function oldMetaKey(disciplines: Record<string, unknown>, name: string): string | undefined {
+  return Object.keys(disciplines).find((k) => k === name);
 }
 
 

@@ -34,7 +34,7 @@ import {
   testKey,
 } from "../store/openrouter";
 import { useCart } from "../store/CartContext";
-import { BrandingTab, CatalogTab, HomepageTab, ShippingTab } from "./DashboardTabs";
+import { BrandsTab, BrandingTab, CatalogTab, CategoriesTab, HomepageTab, ShippingTab } from "./DashboardTabs";
 import {
   ArrowUpRight,
   BellIcon,
@@ -46,6 +46,7 @@ import {
   DiamondIcon,
   EyeIcon,
   EyeOffIcon,
+  GemIcon,
   KeyIcon,
   LogoMark,
   MinusIcon,
@@ -200,6 +201,8 @@ type Tab =
   | "orders"
   | "products"
   | "catalog"
+  | "brands"
+  | "categories"
   | "customers"
   | "promos"
   | "homepage"
@@ -212,6 +215,8 @@ const TABS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
   { id: "orders", label: "Orders", icon: <CartIcon className="w-4 h-4" /> },
   { id: "products", label: "Inventory", icon: <PackageIcon className="w-4 h-4" /> },
   { id: "catalog", label: "Catalog", icon: <DiamondIcon className="w-3.5 h-3.5" /> },
+  { id: "brands", label: "Brands", icon: <GemIcon className="w-4 h-4" /> },
+  { id: "categories", label: "Categories", icon: <TagIcon className="w-4 h-4" /> },
   { id: "customers", label: "Customers", icon: <UserIcon className="w-4 h-4" /> },
   { id: "promos", label: "Promotions", icon: <TagIcon className="w-4 h-4" /> },
   { id: "homepage", label: "Homepage", icon: <BellIcon className="w-4 h-4" /> },
@@ -1199,6 +1204,8 @@ export default function Dashboard() {
           {tab === "orders" && <OrdersTab dash={dash} search={search} onStatus={onStatus} />}
           {tab === "products" && <ProductsTab dash={dash} search={search} onStock={onStock} onToggle={onToggleProduct} />}
           {tab === "catalog" && <CatalogTab />}
+          {tab === "brands" && <BrandsTab />}
+          {tab === "categories" && <CategoriesTab />}
           {tab === "customers" && <CustomersTab dash={dash} />}
           {tab === "promos" && <PromosTab dash={dash} onToggle={onTogglePromo} onMint={onMint} />}
           {tab === "homepage" && <HomepageTab />}

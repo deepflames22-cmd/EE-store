@@ -184,23 +184,26 @@ function Footer() {
 
   const social = (name: string) => pushToast(`${name} is by invitation`, "The maison keeps its circles small.");
 
+  const { site } = useSite();
+
   const cols: Array<{ title: string; links: Array<{ label: string; to: string }> }> = [
     {
-      title: "Boutique",
+      title: "Disciplines",
       links: [
         { label: "All objets", to: "/shop" },
-        { label: "Audio", to: "/shop" },
-        { label: "Wearables", to: "/shop" },
-        { label: "Imaging", to: "/shop" },
-        { label: "Desk", to: "/shop" },
+        ...site.categories.map((c) => ({ label: c.name, to: `/category/${encodeURIComponent(c.name)}` })),
       ],
+    },
+    {
+      title: "Labels",
+      links: site.brands.map((b) => ({ label: b.name, to: `/brand/${b.id}` })),
     },
     {
       title: "Maison",
       links: [
         { label: "Our story", to: "/maison" },
-        { label: "The atelier", to: "/maison" },
         { label: "Concierge", to: "/contact" },
+        { label: "The console", to: "/dashboard" },
       ],
     },
     {
@@ -209,7 +212,6 @@ function Footer() {
         { label: "Cart", to: "/cart" },
         { label: "Profile", to: "/profile" },
         { label: "Sign in", to: "/auth" },
-        { label: "Contact", to: "/contact" },
       ],
     },
   ];

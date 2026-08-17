@@ -9,6 +9,8 @@ import { BootLoader } from "./components/Loader";
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
 import ProductPage from "./pages/Product";
+import CategoryPage from "./pages/CategoryPage";
+import BrandPage from "./pages/BrandPage";
 import Maison from "./pages/Maison";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
@@ -26,6 +28,8 @@ function AnimatedRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/product/:id" element={<ProductPage />} />
+        <Route path="/category/:name" element={<CategoryPage />} />
+        <Route path="/brand/:id" element={<BrandPage />} />
         <Route path="/maison" element={<Maison />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/auth" element={<Auth />} />

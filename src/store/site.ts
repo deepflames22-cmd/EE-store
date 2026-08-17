@@ -1,6 +1,8 @@
 import { createElement, createContext, useCallback, useContext, useMemo, useState } from "react";
 import {
   BUNDLE,
+  IMG,
+  LIFESTYLE_IMG,
   MARQUEE_ITEMS,
   PRODUCTS,
   TESTIMONIALS,
@@ -17,9 +19,24 @@ export type ServiceItem = { icon: "truck" | "shield" | "tag" | "globe"; title: s
 export type StatItem = { value: number; suffix: string; decimals: number; label: string };
 export type CraftPoint = { k: string; v: string };
 
+export type BrandMeta = {
+  id: string;
+  name: string;
+  tagline: string;
+  est: string;
+  story: string;
+  image: string;
+};
+
+export type CategoryMeta = {
+  name: Category;
+  description: string;
+  image: string;
+};
+
 export type SiteConfig = {
   brand: { name: string; tagline: string; est: string; footerNote: string; press: string[] };
-  hero: { kicker: string; line1: string; line2: string; accent: string; sub: string; ctaShop: string; ctaView: string; badge: string };
+  hero: { kicker: string; line1: string; line2: string; accent: string; sub: string; ctaShop: string; ctaView: string; badge: string; image?: string };
   marquee: string[];
   sections: {
     promoCountdown: boolean;
@@ -39,7 +56,7 @@ export type SiteConfig = {
   spotlight: { productId: string; badge: string; note: string };
   disciplines: Record<Category, { blurb: string; note: string; feats: string[] }>;
   bundle: { save: number; note: string; title: string; accent: string; sub: string };
-  craft: { kicker: string; title: string; accent: string; copy: string; points: CraftPoint[]; figLabel: string };
+  craft: { kicker: string; title: string; accent: string; copy: string; points: CraftPoint[]; figLabel: string; image?: string };
   services: { title: string; accent: string; items: ServiceItem[] };
   stats: { items: StatItem[] };
   voices: { title: string; accent: string; quotes: QuoteItem[] };
@@ -51,6 +68,9 @@ export type SiteConfig = {
   ai: { persona: string; tone: string };
   maintenance: { enabled: boolean; title: string; note: string };
   productOverrides: Record<string, Partial<Product>>;
+  catalog: Product[];
+  brands: BrandMeta[];
+  categories: CategoryMeta[];
 };
 
 /* ---------------- defaults ---------------- */
@@ -200,6 +220,62 @@ export const DEFAULT_SITE: SiteConfig = {
     note: "The boutique is briefly closed while we polish Run 07. The console remains open for the maison.",
   },
   productOverrides: {},
+  catalog: structuredClone(PRODUCTS),
+  brands: [
+    {
+      id: "aurion",
+      name: "Aurion",
+      tagline: "The house label",
+      est: "MMXIX",
+      story:
+        "The founding atelier. Aurion cuts every hero objet from billet aluminium, dresses it in the 24-karat coat, and numbers it for life. If it carries the house name, it set the standard the others follow.",
+      image: LIFESTYLE_IMG,
+    },
+    {
+      id: "or-fer",
+      name: "Or & Fer",
+      tagline: "Gold & iron — sound and desk hardware",
+      est: "MMXXI",
+      story:
+        "A small Lyon workshop folded into the maison. Or & Fer builds the things you touch every day — earbuds, keyboards, desk instruments — where brass weight and silent tactiles matter more than anything.",
+      image: IMG.earbuds,
+    },
+    {
+      id: "kinetiq",
+      name: "Kinetiq",
+      tagline: "Motion, stabilised",
+      est: "MMXXII",
+      story:
+        "The imaging division. Kinetiq's gimbals and primes are tuned so footage comes out graded — golden hour by default. Their drones land on a palm and their cameras fit a coat pocket.",
+      image: IMG.drone,
+    },
+  ],
+  categories: [
+    {
+      name: "Audio",
+      description:
+        "Sound, dressed in gold — over-ears, earbuds and 360° columns for the room. Adaptive ANC, hi-res codecs, radiators that fill a ballroom.",
+      image: IMG.headphones,
+    },
+    {
+      name: "Wearables",
+      description:
+        "Timepieces that compute. Sapphire crystal, gold cases, ten-day reserves — worn daily, charged weekly, noticed constantly.",
+      image: IMG.watch,
+    },
+    {
+      name: "Imaging",
+      description:
+        "Cameras and drones with gold-anodised plates and steady gimbals. Fixed primes, 8K capture, airframes under 250 grams.",
+      image: IMG.camera,
+    },
+    {
+      name: "Desk",
+      description:
+        "Instruments for the working surface — hot-swap tactiles, tri-mode links and 2.1kg brass cores. Weight is a feature.",
+      image: IMG.keyboard,
+    },
+  ],
 };
 
 /* ---------------- persistence ---------------- */
@@ -242,6 +318,15 @@ function load(): SiteConfig {
       maintenance: { ...base.maintenance, ...parsed.maintenance },
       marquee: parsed.marquee ?? base.marquee,
       productOverrides: { ...base.productOverrides, ...parsed.productOverrides },
+      catalog:
+        Array.isArray(parsed.catalog) && parsed.catalog.length
+          ? (parsed.catalog as Product[]).map((p) => ({ ...p, brand: p.brand ?? "Aurion" }))
+          : base.catalog,
+      brands: Array.isArray(parsed.brands) && parsed.brands.length ? (parsed.brands as BrandMeta[]) : base.brands,
+      categories:
+        Array.isArray(parsed.categories) && parsed.categories.length
+          ? (parsed.categories as CategoryMeta[])
+          : base.categories,
     };
   } catch {
     return structuredClone(DEFAULT_SITE);
@@ -263,7 +348,7 @@ export function getSiteConfig(): SiteConfig {
 }
 
 export function getProducts(): Product[] {
-  return PRODUCTS.map((p) => ({ ...p, ...cache.productOverrides[p.id] }));
+  return cache.catalog.map((p) => ({ ...p, brand: p.brand ?? "Aurion", ...cache.productOverrides[p.id] }));
 }
 
 export function resetSite() {
@@ -278,6 +363,7 @@ type SiteCtx = {
   products: Product[];
   saveSite: (next: SiteConfig) => void;
   patchSite: (patch: Partial<SiteConfig>) => void;
+  saveCatalog: (list: Product[]) => void;
 };
 
 const Ctx = createContext<SiteCtx | null>(null);
@@ -298,12 +384,22 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     setSite(next);
   }, []);
 
+  const saveCatalog = useCallback((list: Product[]) => {
+    const next = { ...cache, catalog: list };
+    cache = next;
+    persist(next);
+    setSite(next);
+  }, []);
+
   const products = useMemo(
-    () => PRODUCTS.map((p) => ({ ...p, ...site.productOverrides[p.id] })),
-    [site.productOverrides]
+    () => site.catalog.map((p) => ({ ...p, brand: p.brand ?? "Aurion", ...site.productOverrides[p.id] })),
+    [site.catalog, site.productOverrides]
   );
 
-  const value = useMemo(() => ({ site, products, saveSite, patchSite }), [site, products, saveSite, patchSite]);
+  const value = useMemo(
+    () => ({ site, products, saveSite, patchSite, saveCatalog }),
+    [site, products, saveSite, patchSite, saveCatalog]
+  );
 
   return createElement(Ctx.Provider, { value }, children);
 }

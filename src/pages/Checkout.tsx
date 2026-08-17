@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCart } from "../store/CartContext";
 import { useAuth } from "../store/AuthContext";
 import { addOrder, makeOrderId } from "../store/orders";
-import { FREE_SHIP_AT, SHIPPING_FLAT, formatPrice } from "../data/products";
+import { SHIPPING_FLAT, formatPrice } from "../data/products";
 import {
   ArrowRight,
   CardIcon,
@@ -40,7 +40,7 @@ type FormState = {
 };
 
 export default function Checkout() {
-  const { lines, subtotal, discount, promo, clear } = useCart();
+  const { lines, subtotal, discount, promo, clear, freeAt } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -64,7 +64,7 @@ export default function Checkout() {
 
   const afterDiscount = subtotal - discount;
   const shippingOpt = SHIPPING_OPTIONS.find((s) => s.id === shippingId) ?? SHIPPING_OPTIONS[0];
-  const shipping = shippingId === "standard" && afterDiscount >= FREE_SHIP_AT ? 0 : shippingOpt.cost;
+  const shipping = shippingId === "standard" && afterDiscount >= freeAt ? 0 : shippingOpt.cost;
   const total = afterDiscount + shipping;
 
   const itemCount = useMemo(() => lines.reduce((s, l) => s + l.qty, 0), [lines]);
@@ -288,7 +288,7 @@ export default function Checkout() {
                     </h2>
                     <div className="mt-7 space-y-4">
                       {SHIPPING_OPTIONS.map((o) => {
-                        const cost = o.id === "standard" && afterDiscount >= FREE_SHIP_AT ? 0 : o.cost;
+                        const cost = o.id === "standard" && afterDiscount >= freeAt ? 0 : o.cost;
                         const active = shippingId === o.id;
                         return (
                           <button
@@ -316,9 +316,9 @@ export default function Checkout() {
                         );
                       })}
                     </div>
-                    {afterDiscount >= FREE_SHIP_AT && (
+                    {afterDiscount >= freeAt && (
                       <p className="mt-4 flex items-center gap-2.5 font-mono text-[10px] tracking-[0.2em] uppercase text-pine">
-                        <TagIcon className="w-4 h-4" /> Standard delivery is complimentary above {formatPrice(FREE_SHIP_AT)}
+                        <TagIcon className="w-4 h-4" /> Standard delivery is complimentary above {formatPrice(freeAt)}
                       </p>
                     )}
                   </>

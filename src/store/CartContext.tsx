@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { PROMOS, promoDiscount, type Product, type Promo } from "../data/products";
+import { promoDiscount, type Product, type Promo } from "../data/products";
+import { getSettings, resolvePromo } from "./coupons";
 
 export type CartLine = { product: Product; qty: number };
 export type ToastItem = { id: number; title: string; body?: string };
@@ -8,6 +9,7 @@ type CartCtx = {
   lines: CartLine[];
   count: number;
   subtotal: number;
+  freeAt: number;
   promo: Promo | null;
   discount: number;
   add: (p: Product, qty?: number) => void;
@@ -38,7 +40,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [promo, setPromo] = useState<Promo | null>(() => {
     try {
       const code = localStorage.getItem(PROMO_KEY);
-      return PROMOS.find((p) => p.code === code) ?? null;
+      return code ? resolvePromo(code) : null;
     } catch {
       return null;
     }
@@ -112,8 +114,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyPromo = useCallback(
     (code: string): { ok: boolean; message: string } => {
-      const normalized = code.trim().toUpperCase();
-      const found = PROMOS.find((p) => p.code === normalized);
+      const found = resolvePromo(code);
       if (!found) return { ok: false, message: "That code is not in the ledger." };
       setPromo(found);
       return { ok: true, message: found.label };
@@ -131,6 +132,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       lines,
       count,
       subtotal,
+      freeAt: getSettings().freeShipAt,
       promo,
       discount,
       add,

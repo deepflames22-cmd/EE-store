@@ -206,6 +206,30 @@ export const LogoutIcon = ({ className = "w-5 h-5" }: P) => (
   </svg>
 );
 
+export const BellIcon = ({ className = "w-5 h-5" }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
+    <path d="M12 4a6 6 0 0 0-6 6v3.2L4.5 16h15L18 13.2V10a6 6 0 0 0-6-6Z" strokeLinejoin="round" />
+    <path d="M10 18.5a2 2 0 0 0 4 0" strokeLinecap="round" />
+  </svg>
+);
+
+export const SearchIcon = ({ className = "w-5 h-5" }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
+    <circle cx="10.5" cy="10.5" r="6" />
+    <path d="m15.5 15.5 4.5 4.5" strokeLinecap="round" />
+  </svg>
+);
+
+export const SettingsIcon = ({ className = "w-5 h-5" }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
+    <path
+      d="M10.3 3.5h3.4l.5 2.6 1.9.8 2.2-1.4 2.4 2.4-1.4 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.4 2.2-2.4 2.4-2.2-1.4-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.4-2.4-2.4 1.4-2.2-.8-1.9-2.6-.5v-3.4l2.6-.5.8-1.9-1.4-2.2 2.4-2.4 2.2 1.4 1.9-.8.5-2.6Z"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="12" r="2.6" />
+  </svg>
+);
+
 export const TimerIcon = ({ className = "w-5 h-5" }: P) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden>
     <circle cx="12" cy="13.5" r="7.5" />

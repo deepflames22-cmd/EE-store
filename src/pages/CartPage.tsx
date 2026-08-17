@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCart } from "../store/CartContext";
-import { FREE_SHIP_AT, SHIPPING_FLAT, formatPrice } from "../data/products";
+import { SHIPPING_FLAT, formatPrice } from "../data/products";
 import {
   ArrowRight,
   CartIcon,
@@ -15,6 +15,30 @@ import {
   TruckIcon,
 } from "../components/Icons";
 import { LineMaskReveal, Reveal } from "../components/shared";
+import { getClaimedCodes } from "../store/coupons";
+
+function ClaimedRow({ onApply }: { onApply: (code: string) => void }) {
+  const claimed = getClaimedCodes();
+  if (claimed.length === 0) return null;
+  return (
+    <div className="mb-3">
+      <div className="font-mono text-[9px] tracking-[0.22em] uppercase text-mist">Your clipped coupons</div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {claimed.map((c) => (
+          <button
+            key={c}
+            type="button"
+            data-cursor
+            onClick={() => onApply(c)}
+            className="border-2 border-dashed border-gold/60 bg-brass/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] uppercase text-gold hover:bg-brass hover:text-ink hover:border-brass transition-all duration-300"
+          >
+            {c} — apply
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function PromoBox() {
   const { promo, applyPromo, removePromo, pushToast } = useCart();
@@ -51,6 +75,13 @@ function PromoBox() {
         </div>
       ) : (
         <form onSubmit={submit} className="mt-3">
+          <ClaimedRow
+            onApply={(c) => {
+              const r = applyPromo(c);
+              if (r.ok) pushToast("Coupon applied", `${c} — ${r.message}`);
+              else setErr(r.message);
+            }}
+          />
           <div className={`flex border-2 transition-colors ${err ? "border-rust" : "border-ink/20 focus-within:border-ink"}`}>
             <input
               value={code}
@@ -75,13 +106,13 @@ function PromoBox() {
 }
 
 export default function CartPage() {
-  const { lines, count, subtotal, discount, setQty, remove, pushToast } = useCart();
+  const { lines, count, subtotal, discount, setQty, remove, pushToast, freeAt } = useCart();
   const navigate = useNavigate();
 
   const afterDiscount = subtotal - discount;
-  const shipping = lines.length === 0 ? 0 : afterDiscount >= FREE_SHIP_AT ? 0 : SHIPPING_FLAT;
+  const shipping = lines.length === 0 ? 0 : afterDiscount >= freeAt ? 0 : SHIPPING_FLAT;
   const total = afterDiscount + shipping;
-  const progress = Math.min((afterDiscount / FREE_SHIP_AT) * 100, 100);
+  const progress = freeAt > 0 ? Math.min((afterDiscount / freeAt) * 100, 100) : 100;
 
   return (
     <motion.div
@@ -146,7 +177,7 @@ export default function CartPage() {
                     <TruckIcon className="w-5 h-5 text-gold" />
                     {shipping === 0
                       ? "White-glove delivery unlocked — complimentary"
-                      : `${formatPrice(FREE_SHIP_AT - afterDiscount)} away from complimentary delivery`}
+                      : `${formatPrice(Math.max(0, freeAt - afterDiscount))} away from complimentary delivery`}
                   </div>
                   <div className="mt-3 h-1.5 bg-ink/10 overflow-hidden">
                     <motion.div

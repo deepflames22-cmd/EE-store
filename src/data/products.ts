@@ -22,6 +22,49 @@ export const PROMOS: Promo[] = [
   { code: "GILD10", label: "10% off the entire run", type: "pct", value: 10 },
   { code: "RUN07", label: "$75 off orders over $600", type: "flat", value: 75, min: 600 },
   { code: "MAISON", label: "$25 house welcome", type: "flat", value: 25 },
+  { code: "WELCOME15", label: "15% off your first seal", type: "pct", value: 15 },
+  { code: "SPIN20", label: "20% off — won at the wheel", type: "pct", value: 20 },
+  { code: "FLASH25", label: "25% off the flash drop", type: "pct", value: 25, min: 400 },
+];
+
+export const COUPONS = [
+  {
+    code: "WELCOME15",
+    pct: "15%",
+    title: "First-seal welcome",
+    note: "New members · any objet",
+    expiry: "Ends Sunday",
+  },
+  {
+    code: "RUN07",
+    pct: "$75",
+    title: "Run 07 ledger credit",
+    note: "On orders over $600",
+    expiry: "While Run 07 lasts",
+  },
+  {
+    code: "FLASH25",
+    pct: "25%",
+    title: "Flash-drop cut",
+    note: "On orders over $400",
+    expiry: "48 hours only",
+  },
+  {
+    code: "GILD10",
+    pct: "10%",
+    title: "The gilded hours",
+    note: "Everything in the run",
+    expiry: "Counter on the home",
+  },
+];
+
+export const WHEEL_PRIZES: Array<{ label: string; sub: string; code: string | null }> = [
+  { label: "20% OFF", sub: "code SPIN20", code: "SPIN20" },
+  { label: "GILD10", sub: "10% off", code: "GILD10" },
+  { label: "TRY AGAIN", sub: "the house smiles", code: null },
+  { label: "15% OFF", sub: "code WELCOME15", code: "WELCOME15" },
+  { label: "$25 CREDIT", sub: "code MAISON", code: "MAISON" },
+  { label: "25% FLASH", sub: "code FLASH25", code: "FLASH25" },
 ];
 
 export const BUNDLE = {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import type { Category } from "../data/products";
+import { CouponWall, DealGrid, FlashDeals, PromoCarousel, SpinWheel } from "../components/promos";
 import {
   BUNDLE,
   CATEGORIES,
@@ -485,6 +487,30 @@ function Spotlight() {
 
 function Disciplines() {
   const navigate = useNavigate();
+  const { add } = useCart();
+  const [open, setOpen] = useState<Category | null>(null);
+  const reduce = useReducedMotion();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [blob, setBlob] = useState({ x: -9999, y: -9999 });
+  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const lastRipple = useRef(0);
+  const idRef = useRef(0);
+
+  const onMove = (e: React.MouseEvent) => {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setBlob({ x, y });
+    if (reduce) return;
+    const now = performance.now();
+    if (now - lastRipple.current < 130) return;
+    lastRipple.current = now;
+    const id = ++idRef.current;
+    setRipples((r) => [...r.slice(-6), { id, x, y }]);
+    window.setTimeout(() => setRipples((r) => r.filter((p) => p.id !== id)), 1050);
+  };
+
   return (
     <section className="py-24">
       <div className="mx-auto max-w-[88rem] px-5 md:px-8">
@@ -496,36 +522,149 @@ function Disciplines() {
               Choose your <span className="italic font-medium text-gold">instrument.</span>
             </>
           }
+          right={
+            <p className="max-w-xs text-sm text-mist leading-relaxed">
+              Move across the ledger — the water follows. Click a discipline to open its
+              shelf.
+            </p>
+          }
         />
-        <div className="mt-12 border-t-2 border-ink">
+        <div
+          ref={wrapRef}
+          onMouseMove={onMove}
+          onMouseLeave={() => setBlob({ x: -9999, y: -9999 })}
+          className="mt-12 border-t-2 border-ink relative overflow-hidden"
+        >
+          <div className="water-blob" style={{ left: blob.x, top: blob.y }} aria-hidden />
+          {ripples.map((r) => (
+            <span key={`${r.id}-a`} className="ripple-ring" style={{ left: r.x, top: r.y }} aria-hidden>
+              <span className="ripple-ring inner" style={{ left: "50%", top: "50%", transform: "translate(-50%,-50%)" }} />
+            </span>
+          ))}
+
           {CATEGORIES.map((c, i) => {
-            const count = PRODUCTS.filter((p) => p.category === c).length;
-            const first = PRODUCTS.find((p) => p.category === c);
+            const items = PRODUCTS.filter((p) => p.category === c);
+            const isOpen = open === c;
             return (
-              <Reveal key={c} delay={i * 0.06} y={24}>
+              <div key={c} className="relative border-b-2 border-ink">
                 <button
                   data-cursor
-                  onClick={() => navigate("/shop", { state: { cat: c } })}
-                  className="group relative w-full grid grid-cols-[auto_1fr_auto] md:grid-cols-[80px_1fr_auto_auto] items-center gap-5 md:gap-8 border-b-2 border-ink py-6 px-2 text-left overflow-hidden"
+                  onClick={() => setOpen(isOpen ? null : c)}
+                  aria-expanded={isOpen}
+                  className="group relative w-full grid grid-cols-[auto_1fr_auto] md:grid-cols-[90px_1fr_auto_auto] items-center gap-4 md:gap-8 py-7 px-2 text-left"
                 >
-                  <span className="absolute inset-0 bg-ink translate-y-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0" />
-                  <span className="relative font-mono text-sm text-gold transition-colors duration-300">0{i + 1}</span>
-                  <span className="relative font-display font-extrabold text-3xl md:text-5xl tracking-tight text-ink transition-colors duration-300 group-hover:text-paper">
+                  <span className={`font-mono text-sm transition-colors duration-300 ${isOpen ? "text-gold" : "text-mist group-hover:text-gold"}`}>
+                    0{i + 1}
+                  </span>
+                  <span className={`font-display font-extrabold text-4xl md:text-6xl tracking-tight transition-all duration-400 ${isOpen ? "text-gold italic" : "text-ink group-hover:text-gold group-hover:translate-x-2"}`}>
                     {c}
                   </span>
-                  {first && (
-                    <span className="relative hidden md:block w-16 h-16 plate-dark border border-ink/20 p-1.5 opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-400">
-                      <img src={first.img} alt="" className="blend-lighten w-full h-full object-contain" />
+                  <span className="relative hidden md:block w-20 h-20 plate-dark border-2 border-ink/20 group-hover:border-brass p-2 transition-all duration-400 group-hover:rotate-3 overflow-hidden">
+                    <img
+                      src={items[0]?.img}
+                      alt=""
+                      className="blend-lighten w-full h-full object-contain transition-transform duration-500 group-hover:scale-115"
+                    />
+                  </span>
+                  <span className="flex items-center gap-4">
+                    <span className="hidden sm:block font-mono text-[10px] tracking-[0.24em] uppercase text-mist">
+                      {items.length} objets
                     </span>
-                  )}
-                  <span className="relative flex items-center gap-4">
-                    <span className="font-mono text-[10px] tracking-[0.24em] uppercase text-mist transition-colors duration-300 group-hover:text-brass">
-                      {count} objets
+                    <span
+                      className={`w-11 h-11 border-2 flex items-center justify-center transition-all duration-400 ${
+                        isOpen ? "bg-ink border-ink text-brass rotate-90" : "border-ink/25 text-ink group-hover:border-ink group-hover:border-brass group-hover:bg-brass group-hover:text-ink"
+                      }`}
+                    >
+                      <ArrowRight className={`w-4 h-4 transition-transform duration-400 ${isOpen ? "rotate-90" : ""}`} />
                     </span>
-                    <ArrowUpRight className="w-6 h-6 text-ink transition-all duration-300 group-hover:text-brass group-hover:translate-x-1 group-hover:-translate-y-1" />
                   </span>
                 </button>
-              </Reveal>
+
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      key="shelf"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-2 pb-9 pt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {items.map((p, pi) => (
+                          <motion.div
+                            key={p.id}
+                            initial={{ opacity: 0, y: 26 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.08 + pi * 0.07 }}
+                            className="group/card border-2 border-ink bg-paper hover-lift hover:border-gold"
+                          >
+                            <button
+                              data-cursor
+                              onClick={() => navigate(`/product/${p.id}`)}
+                              className="relative block w-full plate-dark overflow-hidden"
+                              aria-label={`View ${p.name}`}
+                            >
+                              {p.was && (
+                                <span className="absolute top-3 left-3 z-10 bg-rust text-paper font-mono text-[9px] font-medium tracking-[0.16em] px-2 py-1">
+                                  −{Math.round((1 - p.price / p.was) * 100)}%
+                                </span>
+                              )}
+                              {!p.was && p.tag && (
+                                <span className="absolute top-3 left-3 z-10 bg-brass text-ink font-mono text-[9px] font-medium tracking-[0.16em] px-2 py-1">
+                                  {p.tag}
+                                </span>
+                              )}
+                              <img
+                                src={p.img}
+                                alt={p.name}
+                                loading="lazy"
+                                className="blend-lighten mx-auto h-48 md:h-56 object-contain px-8 py-8 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:scale-108 group-hover/card:-rotate-1"
+                              />
+                            </button>
+                            <div className="px-5 py-4 flex items-center justify-between gap-3 border-t-2 border-ink">
+                              <div className="min-w-0">
+                                <button
+                                  data-cursor
+                                  onClick={() => navigate(`/product/${p.id}`)}
+                                  className="font-display font-bold text-lg hover:text-gold transition-colors truncate block"
+                                >
+                                  {p.name}
+                                </button>
+                                <div className="text-sm tabular-nums">
+                                  <span className="text-mist">{formatPrice(p.price)}</span>
+                                  {p.was && <span className="ml-2 text-mist/50 line-through">{formatPrice(p.was)}</span>}
+                                </div>
+                              </div>
+                              <button
+                                data-cursor
+                                onClick={() => add(p)}
+                                aria-label={`Add ${p.name} to cart`}
+                                className="shrink-0 w-11 h-11 border-2 border-ink flex items-center justify-center hover:bg-brass hover:border-brass hover:rotate-90 transition-all duration-300"
+                              >
+                                <PlusIcon className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </motion.div>
+                        ))}
+                        <motion.button
+                          data-cursor
+                          onClick={() => navigate("/shop", { state: { cat: c } })}
+                          initial={{ opacity: 0, y: 26 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, delay: 0.08 + items.length * 0.07 }}
+                          className="border-2 border-dashed border-ink/30 min-h-[220px] flex flex-col items-center justify-center gap-3 hover:border-gold hover:bg-brass/10 transition-all duration-300 group/all"
+                        >
+                          <ArrowUpRight className="w-8 h-8 text-gold transition-transform duration-300 group-hover/all:translate-x-1.5 group-hover/all:-translate-y-1.5" />
+                          <span className="font-mono text-[10px] tracking-[0.26em] uppercase text-mist group-hover/all:text-ink">
+                            All {c} in the shop
+                          </span>
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             );
           })}
         </div>
@@ -977,11 +1116,16 @@ export default function Home() {
     >
       <Hero />
       <Marquee items={MARQUEE_ITEMS} />
+      <PromoCarousel />
       <PromoCountdown />
+      <CouponWall />
       <ProductRail />
+      <FlashDeals />
       <Spotlight />
       <Disciplines />
+      <DealGrid />
       <BundlePromo />
+      <SpinWheel />
       <Craft />
       <ServicesLedger />
       <StatsBand />

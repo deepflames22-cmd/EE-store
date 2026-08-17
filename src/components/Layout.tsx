@@ -12,6 +12,7 @@ const NAV = [
   { to: "/shop", label: "Shop" },
   { to: "/maison", label: "Maison" },
   { to: "/contact", label: "Contact" },
+  { to: "/dashboard", label: "Dashboard" },
 ];
 
 function Nav() {
@@ -321,14 +322,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
   }, [location.pathname]);
 
+  const isConsole = location.pathname.startsWith("/dashboard");
+
   return (
-    <div className="min-h-screen bg-paper text-ink selection:bg-brass">
+    <div className={`min-h-screen text-ink selection:bg-brass ${isConsole ? "bg-ink" : "bg-paper"}`}>
       <Cursor />
       <div className="noise-overlay" aria-hidden />
       <PageVeil routeKey={veilKey} />
-      <Nav />
+      {!isConsole && <Nav />}
       <main>{children}</main>
-      <Footer />
+      {!isConsole && <Footer />}
       <Toasts toasts={toasts} />
     </div>
   );

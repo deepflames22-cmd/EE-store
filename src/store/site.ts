@@ -1,4 +1,16 @@
-import { createElement, createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createElement, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  apiBrands,
+  apiCategories,
+  apiConfigured,
+  apiDeleteBrand,
+  apiDeleteCategory,
+  apiDeleteProduct,
+  apiProducts,
+  apiSaveBrand,
+  apiSaveCategory,
+  apiSaveProduct,
+} from "./api";
 import {
   BUNDLE,
   IMG,
@@ -378,17 +390,74 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const patchSite = useCallback((patch: Partial<SiteConfig>) => {
+    const prev = cache;
     const next = { ...cache, ...patch };
     cache = next;
     persist(next);
     setSite(next);
+    if (apiConfigured()) {
+      if (patch.brands) {
+        const oldIds = new Set(prev.brands.map((b) => b.id));
+        const newIds = new Set(next.brands.map((b) => b.id));
+        next.brands.forEach((b) => apiSaveBrand(b, !oldIds.has(b.id)).catch(() => undefined));
+        prev.brands.filter((b) => !newIds.has(b.id)).forEach((b) => apiDeleteBrand(b.id).catch(() => undefined));
+      }
+      if (patch.categories) {
+        const oldNames = new Set(prev.categories.map((c) => c.name));
+        const newNames = new Set(next.categories.map((c) => c.name));
+        next.categories.forEach((c) =>
+          apiSaveCategory(c, oldNames.has(c.name) ? c.name : null).catch(() => undefined)
+        );
+        prev.categories
+          .filter((c) => !newNames.has(c.name))
+          .forEach((c) => apiDeleteCategory(c.name).catch(() => undefined));
+      }
+    }
+  }, []);
+
+  /* hydrate from Postgres when an API is configured */
+  useEffect(() => {
+    if (!apiConfigured()) return;
+    let alive = true;
+    Promise.allSettled([apiProducts(), apiBrands(), apiCategories()]).then(([p, b, c]) => {
+      if (!alive) return;
+      const next = { ...cache };
+      let changed = false;
+      if (p.status === "fulfilled" && p.value.length) {
+        next.catalog = p.value;
+        changed = true;
+      }
+      if (b.status === "fulfilled" && b.value.length) {
+        next.brands = b.value;
+        changed = true;
+      }
+      if (c.status === "fulfilled" && c.value.length) {
+        next.categories = c.value;
+        changed = true;
+      }
+      if (changed) {
+        cache = next;
+        persist(next);
+        setSite(next);
+      }
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const saveCatalog = useCallback((list: Product[]) => {
+    const prev = cache.catalog;
     const next = { ...cache, catalog: list };
     cache = next;
     persist(next);
     setSite(next);
+    if (apiConfigured()) {
+      const prevIds = new Set(prev.map((p) => p.id));
+      const currIds = new Set(list.map((p) => p.id));
+      list.forEach((p) => apiSaveProduct(p, !prevIds.has(p.id)).catch(() => undefined));
+      prev.filter((p) => !currIds.has(p.id)).forEach((p) => apiDeleteProduct(p.id).catch(() => undefined));
+    }
   }, []);
 
   const products = useMemo(

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCart } from "../store/CartContext";
+import { useSite } from "../store/site";
 import { useAuth } from "../store/AuthContext";
 import Toasts from "./Toasts";
 import Cursor from "./Cursor";

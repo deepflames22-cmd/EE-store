@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  passHash  String   @map("pass_hash")
+  role      String   @default("member")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Brand {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String    @unique
+  tagline   String    @default("")
+  est       String    @default("MMXXIV")
+  story     String    @default("")
+  image     String    @default("")
+  products  Product[]
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("brands")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String    @default("")
+  image       String    @default("")
+  products    Product[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("categories")
+}
+
+model Product {
+  id         String    @id @default(cuid())
+  slug       String    @unique
+  name       String
+  brandId    String    @map("brand_id")
+  categoryId String    @map("category_id")
+  price      Int
+  was        Int?
+  tag        String?
+  blurb      String    @default("")
+  specs      String[]
+  img        String    @default("")
+  active     Boolean   @default(true)
+  brand      Brand     @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  ref            String      @unique
+  userEmail      String      @map("user_email")
+  userName       String      @map("user_name")
+  address        String      @default("")
+  status         String      @default("sealed")
+  subtotal       Int
+  discount       Int         @default(0)
+  promoCode      String?     @map("promo_code")
+  shippingMethod String      @default("Courier Standard") @map("shipping_method")
+  shippingCost   Int         @default(0) @map("shipping_cost")
+  total          Int
+  items          OrderItem[]
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String  @map("order_id")
+  productId String? @map("product_id")
+  name      String
+  price     Int
+  qty       Int
+  img       String  @default("")
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Promo {
+  code   String  @id
+  label  String
+  type   String
+  value  Int
+  min    Int?
+  active Boolean @default(true)
+  custom Boolean @default(false)
+
+  @@map("promos")
+}
+
+model SiteSetting {
+  key   String @id
+  value Json
+
+  @@map("site_settings")
+}

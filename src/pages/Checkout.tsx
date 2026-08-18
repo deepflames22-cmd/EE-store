@@ -3,7 +3,8 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCart } from "../store/CartContext";
 import { useAuth } from "../store/AuthContext";
-import { addOrder, makeOrderId } from "../store/orders";
+import { addOrder, makeOrderId, type Order } from "../store/orders";
+import { apiConfigured, apiPlaceOrder } from "../store/api";
 import { SHIPPING_FLAT, formatPrice } from "../data/products";
 import {
   ArrowRight,
@@ -114,7 +115,7 @@ export default function Checkout() {
     setPlacing(true);
     window.setTimeout(() => {
       const id = makeOrderId();
-      addOrder({
+      const order: Order = {
         id,
         email: user.email,
         name: form.name,
@@ -135,7 +136,11 @@ export default function Checkout() {
         total,
         address: `${form.address}, ${form.city} ${form.zip}, ${form.country}`,
         status: "sealed",
-      });
+      };
+      addOrder(order);
+      if (apiConfigured()) {
+        apiPlaceOrder(order).catch(() => undefined);
+      }
       clear();
       navigate(`/order/${id}`, { replace: true });
     }, 1100);

@@ -16,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatPrice, type Category } from "../data/products";
+import { checkApi, getApiUrl, setApiUrl } from "../store/api";
 import {
   DashStatus,
   DashState,
@@ -884,6 +885,107 @@ function PromosTab({
   );
 }
 
+function ApiPanel() {
+  const { pushToast } = useCart();
+  const [url, setUrl] = useState(getApiUrl());
+  const [state, setState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
+  const [detail, setDetail] = useState("");
+
+  const save = () => {
+    setApiUrl(url);
+    pushToast(
+      url.trim() ? "Database bridge armed" : "Database bridge removed",
+      url.trim() ? "Catalog, taxonomy and orders now sync to Postgres." : "The maison is back on its local ledger."
+    );
+    setState("idle");
+  };
+
+  const test = async () => {
+    setState("testing");
+    const r = await checkApi(url);
+    setState(r.ok ? "ok" : "fail");
+    setDetail(r.ok ? "The ledger answered. Postgres is reachable." : r.error ?? "Unreachable");
+    if (r.ok) pushToast("Bridge verified", "The API answered /api/health.");
+  };
+
+  return (
+    <div className="xl:col-span-2 border-2 border-brass/60 bg-coal/70 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-display font-bold text-xl flex items-center gap-3">
+            Database bridge <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-brass border border-brass/50 px-2 py-1">Postgres · Prisma · Express</span>
+          </h3>
+          <p className="mt-1.5 text-xs text-paper/45 max-w-2xl leading-relaxed">
+            Point the maison at the bundled API (<span className="font-mono text-brass">server/index.ts</span>). When set, the
+            catalog, brands, categories and every placed order read & write through Postgres; when empty or unreachable, the
+            storefront silently falls back to its local ledger.
+          </p>
+        </div>
+        <span
+          className={`flex items-center gap-2 font-mono text-[9px] tracking-[0.2em] uppercase border px-3 py-1.5 ${
+            state === "ok"
+              ? "border-[#9fc4ab] text-[#9fc4ab]"
+              : state === "fail"
+              ? "border-rust text-[#d98a72]"
+              : url.trim()
+              ? "border-brass/60 text-brass"
+              : "border-paper/20 text-paper/40"
+          }`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${state === "ok" ? "bg-[#9fc4ab]" : state === "fail" ? "bg-rust" : url.trim() ? "bg-brass" : "bg-paper/30"}`} />
+          {state === "ok" ? "Verified" : state === "fail" ? "No answer" : url.trim() ? "Armed" : "Local ledger"}
+        </span>
+      </div>
+
+      <div className="mt-5 flex flex-col md:flex-row gap-3">
+        <div className="flex-1">
+          <label className="font-mono text-[9px] tracking-[0.24em] uppercase text-paper/45">API URL</label>
+          <input
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setState("idle");
+            }}
+            placeholder="http://localhost:4000"
+            className="mt-2 w-full bg-ink border border-paper/15 px-4 py-3 font-mono text-sm focus:outline-none focus:border-brass transition-colors"
+          />
+        </div>
+        <div className="flex items-end gap-2.5">
+          <button
+            data-cursor
+            onClick={save}
+            className="btn-sheen bg-brass text-ink px-6 py-3 font-mono text-[10px] tracking-[0.22em] uppercase font-medium hover:bg-goldlight transition-colors"
+          >
+            Save URL
+          </button>
+          <button
+            data-cursor
+            onClick={test}
+            disabled={state === "testing" || !url.trim()}
+            className="border border-paper/25 px-6 py-3 font-mono text-[10px] tracking-[0.22em] uppercase text-paper/70 hover:border-brass hover:text-brass transition-all duration-300 disabled:opacity-40 flex items-center gap-2.5"
+          >
+            {state === "testing" && <span className="w-3.5 h-3.5 border-2 border-paper/25 border-t-brass rounded-full animate-spin" />}
+            Test line
+          </button>
+        </div>
+      </div>
+
+      {detail && (
+        <p className={`mt-3 font-mono text-[10px] tracking-[0.18em] uppercase ${state === "ok" ? "text-[#9fc4ab]" : "text-[#d98a72]"}`}>
+          {detail}
+        </p>
+      )}
+
+      <div className="mt-5 border-t border-paper/10 pt-4 grid md:grid-cols-4 gap-3 font-mono text-[9px] tracking-[0.16em] uppercase text-paper/40">
+        <span className="border border-paper/10 px-3 py-2.5">1 · export DATABASE_URL</span>
+        <span className="border border-paper/10 px-3 py-2.5">2 · npx prisma migrate deploy</span>
+        <span className="border border-paper/10 px-3 py-2.5">3 · npx tsx server/seed.ts</span>
+        <span className="border border-paper/10 px-3 py-2.5">4 · npx tsx server/index.ts</span>
+      </div>
+    </div>
+  );
+}
+
 function SettingsTab({
   settings,
   onSave,
@@ -898,6 +1000,7 @@ function SettingsTab({
 
   return (
     <div className="grid xl:grid-cols-2 gap-4 items-start">
+      <ApiPanel />
       <div className="border border-paper/12 bg-coal/70 p-6 space-y-6">
         <h3 className="font-display font-bold text-xl">Storefront rules</h3>
         <p className="text-xs text-paper/45 leading-relaxed border border-paper/10 px-4 py-3">
